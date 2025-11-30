@@ -80,9 +80,9 @@ function App() {
     }
   };
 
-  const handleRemoveTorrent = async (infoHash: string) => {
+  const handleRemoveTorrent = async (infoHash: string, deleteData: boolean) => {
     try {
-      await apiClient.removeTorrent(infoHash);
+      await apiClient.removeTorrent(infoHash, deleteData);
 
       // Clear current video if it's the one being removed
       if (currentVideo && currentVideo.url.includes(infoHash)) {
@@ -95,6 +95,24 @@ function App() {
       const errorMessage = err instanceof Error ? err.message : 'Failed to remove torrent';
       setError(errorMessage);
       console.error('Error removing torrent:', err);
+    }
+  };
+
+  const handlePauseTorrent = async (infoHash: string) => {
+    try {
+      await apiClient.pauseTorrent(infoHash);
+      await fetchTorrents();
+    } catch (err) {
+      console.error('Error pausing torrent:', err);
+    }
+  };
+
+  const handleResumeTorrent = async (infoHash: string) => {
+    try {
+      await apiClient.resumeTorrent(infoHash);
+      await fetchTorrents();
+    } catch (err) {
+      console.error('Error resuming torrent:', err);
     }
   };
 
@@ -144,6 +162,8 @@ function App() {
           onAddTorrent={handleAddTorrent}
           onRemoveTorrent={handleRemoveTorrent}
           onPlayFile={handlePlayFile}
+          onPauseTorrent={handlePauseTorrent}
+          onResumeTorrent={handleResumeTorrent}
           isAdding={isAdding}
         />
 

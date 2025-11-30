@@ -58,7 +58,13 @@ class TorrentManager {
      * @param {string} infoHash - Torrent info hash
      * @returns {Promise<void>}
      */
-    removeTorrent(infoHash) {
+    /**
+     * Remove a torrent
+     * @param {string} infoHash - Torrent info hash
+     * @param {boolean} deleteData - Whether to delete downloaded files
+     * @returns {Promise<void>}
+     */
+    removeTorrent(infoHash, deleteData = false) {
         return new Promise((resolve) => {
             const torrent = this.getTorrentByInfoHash(infoHash);
 
@@ -67,9 +73,11 @@ class TorrentManager {
                 return;
             }
 
-            console.log('🗑️  Removing torrent:', torrent.name || infoHash);
+            console.log(`🗑️  Removing torrent: ${torrent.name || infoHash} (Delete Data: ${deleteData})`);
 
-            torrent.destroy(() => {
+            const destroyOptions = { destroyStore: deleteData };
+
+            torrent.destroy(destroyOptions, () => {
                 // Remove from map
                 for (const [magnetURI, t] of this.torrents.entries()) {
                     if (t.infoHash === infoHash) {
@@ -80,6 +88,34 @@ class TorrentManager {
                 resolve();
             });
         });
+    }
+
+    /**
+     * Pause a torrent
+     * @param {string} infoHash 
+     */
+    pauseTorrent(infoHash) {
+        const torrent = this.getTorrentByInfoHash(infoHash);
+        if (torrent) {
+            torrent.pause();
+            console.log('Hz Paused torrent:', infoHash);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Resume a torrent
+     * @param {string} infoHash 
+     */
+    resumeTorrent(infoHash) {
+        const torrent = this.getTorrentByInfoHash(infoHash);
+        if (torrent) {
+            torrent.resume();
+            console.log('▶️  Resumed torrent:', infoHash);
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -138,8 +174,9 @@ class TorrentManager {
             infoHash: torrent.infoHash,
             name: torrent.name || 'Loading metadata...',
             magnetURI: torrent.magnetURI,
+            paused: torrent.paused,
             progress: torrent.progress,
-            downloadSpeed: torrent.downloadSpeed,
+            downloadSpeed: torrent.paused ? 0 : torrent.downloadSpeed,
             uploadSpeed: torrent.uploadSpeed,
             downloaded: torrent.downloaded,
             uploaded: torrent.uploaded,

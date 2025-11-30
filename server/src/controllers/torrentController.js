@@ -104,12 +104,44 @@ export async function getTorrentProgress(req, res, next) {
 export async function removeTorrent(req, res, next) {
     try {
         const { infoHash } = req.params;
-        await torrentManager.removeTorrent(infoHash);
+        const deleteData = req.query.deleteData === 'true';
+
+        await torrentManager.removeTorrent(infoHash, deleteData);
 
         res.json({
             success: true,
             message: 'Torrent removed successfully',
         });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function pauseTorrent(req, res, next) {
+    try {
+        const { infoHash } = req.params;
+        const success = torrentManager.pauseTorrent(infoHash);
+
+        if (!success) {
+            return res.status(404).json({ success: false, error: 'Torrent not found' });
+        }
+
+        res.json({ success: true, message: 'Torrent paused' });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function resumeTorrent(req, res, next) {
+    try {
+        const { infoHash } = req.params;
+        const success = torrentManager.resumeTorrent(infoHash);
+
+        if (!success) {
+            return res.status(404).json({ success: false, error: 'Torrent not found' });
+        }
+
+        res.json({ success: true, message: 'Torrent resumed' });
     } catch (error) {
         next(error);
     }

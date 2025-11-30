@@ -4,10 +4,18 @@
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
+export interface FileData {
+    name: string;
+    path: string;
+    length: number;
+    index: number;
+}
+
 export interface TorrentData {
     infoHash: string;
     name: string;
     magnetURI: string;
+    paused: boolean;
     progress: number;
     downloadSpeed: number;
     uploadSpeed: number;
@@ -16,13 +24,6 @@ export interface TorrentData {
     length: number;
     numPeers: number;
     files: FileData[];
-}
-
-export interface FileData {
-    name: string;
-    path: string;
-    length: number;
-    index: number;
 }
 
 export interface AddTorrentResponse {
@@ -88,13 +89,39 @@ export async function getTorrent(infoHash: string): Promise<TorrentData> {
 /**
  * Remove a torrent
  */
-export async function removeTorrent(infoHash: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/torrents/${infoHash}`, {
+export async function removeTorrent(infoHash: string, deleteData: boolean = false): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/torrents/${infoHash}?deleteData=${deleteData}`, {
         method: 'DELETE',
     });
 
     if (!response.ok) {
         throw new Error('Failed to remove torrent');
+    }
+}
+
+/**
+ * Pause a torrent
+ */
+export async function pauseTorrent(infoHash: string): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/torrents/${infoHash}/pause`, {
+        method: 'POST',
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to pause torrent');
+    }
+}
+
+/**
+ * Resume a torrent
+ */
+export async function resumeTorrent(infoHash: string): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/torrents/${infoHash}/resume`, {
+        method: 'POST',
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to resume torrent');
     }
 }
 

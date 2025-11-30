@@ -18,4 +18,10 @@ router.get('/torrents/:infoHash/progress', torrentController.getTorrentProgress)
 // DELETE /api/torrents/:infoHash - Remove torrent
 router.delete('/torrents/:infoHash', torrentController.removeTorrent);
 
+// POST /api/torrents/:infoHash/pause - Pause torrent
+router.post('/torrents/:infoHash/pause', torrentController.pauseTorrent);
+
+// POST /api/torrents/:infoHash/resume - Resume torrent
+router.post('/torrents/:infoHash/resume', torrentController.resumeTorrent);
+
 export default router;
