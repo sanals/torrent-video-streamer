@@ -26,6 +26,7 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const videoPlayerRef = useRef<HTMLDivElement>(null);
+  const torrentManagerRef = useRef<HTMLDivElement>(null);
 
   // Connect to WebSocket on mount
   useEffect(() => {
@@ -72,6 +73,14 @@ function App() {
       console.log('Torrent added:', torrent.name || torrent.infoHash);
       // Fetch updated list
       await fetchTorrents();
+      
+      // Scroll to torrent manager section after adding
+      setTimeout(() => {
+        torrentManagerRef.current?.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start' 
+        });
+      }, 300); // Wait a bit for the torrent to appear in the list
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to add torrent';
       setError(errorMessage);
@@ -181,15 +190,17 @@ function App() {
 
         <Divider sx={{ my: 4 }} />
 
-        <TorrentManager
-          torrents={torrents}
-          onAddTorrent={handleAddTorrent}
-          onRemoveTorrent={handleRemoveTorrent}
-          onPlayFile={handlePlayFile}
-          onPauseTorrent={handlePauseTorrent}
-          onResumeTorrent={handleResumeTorrent}
-          isAdding={isAdding}
-        />
+        <Box ref={torrentManagerRef}>
+          <TorrentManager
+            torrents={torrents}
+            onAddTorrent={handleAddTorrent}
+            onRemoveTorrent={handleRemoveTorrent}
+            onPlayFile={handlePlayFile}
+            onPauseTorrent={handlePauseTorrent}
+            onResumeTorrent={handleResumeTorrent}
+            isAdding={isAdding}
+          />
+        </Box>
 
         <Snackbar open={!!error} autoHideDuration={6000} onClose={handleCloseError}>
           <Alert onClose={handleCloseError} severity="error" sx={{ width: '100%' }}>

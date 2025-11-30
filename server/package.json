@@ -22,6 +22,7 @@
         "express": "^4.18.2",
         "morgan": "^1.10.0",
         "multer": "^2.0.2",
+        "torrent-search-api": "^2.1.4",
         "webtorrent": "^2.4.0",
         "ws": "^8.18.3"
     },

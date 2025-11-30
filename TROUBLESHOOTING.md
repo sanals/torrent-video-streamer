@@ -157,3 +157,102 @@ curl https://yts.torrentbay.to/api/v2/list_movies.json?query_term=test&limit=1
 3. **ISP blocking** torrent domains for apps (10% chance)
 
 Try solutions 1 & 2 first - they fix most cases!
+
+---
+
+## Understanding Cloudflare Protection
+
+### Why Cloudflare Blocks Automated Requests
+
+**Cloudflare** is a security service that protects websites from bots and automated scripts. Here's why it blocks your app but not your browser:
+
+1. **Browser Fingerprinting**: Cloudflare checks for:
+   - JavaScript execution (browsers run JS, simple HTTP requests don't)
+   - Browser headers (User-Agent, Accept-Language, etc.)
+   - TLS fingerprinting (browser TLS handshakes differ from Node.js)
+   - Behavioral patterns (mouse movements, page interactions)
+
+2. **Your Browser Works Because:**
+   - It executes JavaScript (Cloudflare's challenge page)
+   - It has a full browser fingerprint
+   - It maintains cookies and sessions
+   - It passes Cloudflare's "Just a Moment" challenge
+
+3. **Your App Fails Because:**
+   - Node.js `axios`/`fetch` don't execute JavaScript
+   - They have different TLS fingerprints
+   - They can't solve Cloudflare's JavaScript challenges
+   - They're detected as automated/bot traffic
+
+### How to Verify It's Cloudflare
+
+When you see an error, check the server logs. Cloudflare blocks typically show:
+
+```
+⚠️  Confirmed: Cloudflare protection detected
+```
+
+Or in the error response:
+- Status code: `403` or `503`
+- Response body contains: `"Cloudflare"`, `"Just a moment"`, `"challenge-platform"`
+- Cloudflare Ray ID in the error message
+
+### Solutions for Cloudflare Blocks
+
+#### 1. Use Alternative Search Source (Recommended)
+
+The app now includes an **"Alternative"** search source that tries multiple providers:
+- **RARBG** (usually no Cloudflare)
+- **ThePirateBay** (may work)
+- **Torrent9** (alternative)
+- **1337x** (fallback)
+
+**How to use:**
+1. Select "Backend API" mode
+2. Choose "Alternative" as the source
+3. Search - it will automatically try providers until one works
+
+#### 2. Wait and Retry
+
+Cloudflare blocks are often temporary. Wait 5-10 minutes and try again.
+
+#### 3. Use YTS for Movies
+
+YTS (yts.mx) typically doesn't have Cloudflare protection and works reliably for movies.
+
+#### 4. Use Browser Direct Mode
+
+Switch to "Browser Direct" mode in the search UI - this bypasses the backend and searches directly from your browser, avoiding Cloudflare blocks.
+
+#### 5. Use a VPN (Advanced)
+
+Some VPNs can help bypass Cloudflare, but this is not guaranteed and may violate terms of service.
+
+### Why DNS (1.1.1.1) Won't Help
+
+**Changing DNS won't bypass Cloudflare** because:
+- Cloudflare protection happens at the **application layer** (HTTP/HTTPS)
+- DNS only resolves domain names to IP addresses
+- Cloudflare checks happen **after** DNS resolution
+- The protection is based on request characteristics, not DNS
+
+### What About Using Puppeteer/Playwright?
+
+**Yes, this could work**, but:
+- **Heavy**: Requires installing Chromium (~170MB)
+- **Slow**: Much slower than direct HTTP requests
+- **Resource-intensive**: Uses significant CPU/memory
+- **Complex**: Requires handling browser lifecycle, cookies, etc.
+
+**If you want this implemented**, I can add it, but it's not recommended unless other solutions fail.
+
+---
+
+## Quick Reference: Search Sources
+
+| Source | Content | Cloudflare? | Reliability |
+|--------|---------|-------------|-------------|
+| **YTS** | Movies only | ❌ No | ✅ High |
+| **1337x** | Movies, TV, More | ⚠️ Yes | ⚠️ Medium |
+| **Alternative** | All types | ⚠️ Tries to avoid | ✅ High |
+| **Browser Direct** | Movies (YTS) | ❌ No | ✅ High |

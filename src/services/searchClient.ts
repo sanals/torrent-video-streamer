@@ -38,6 +38,7 @@ export async function searchTorrents(
         category?: string;
         limit?: number;
         sort?: string;
+        source?: string; // 'yts', '1337x', or 'alternative'
     }
 ): Promise<SearchResult[]> {
     const params = new URLSearchParams({
@@ -52,6 +53,9 @@ export async function searchTorrents(
     }
     if (options?.sort) {
         params.append('sort', options.sort);
+    }
+    if (options?.source) {
+        params.append('source', options.source);
     }
 
     const response = await fetch(`${API_BASE_URL}/search?${params}`);

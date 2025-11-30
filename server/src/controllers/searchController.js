@@ -1,11 +1,13 @@
 import torrentSearchService from '../services/torrentSearchService.js';
+import leetXSearchService from '../services/leetxSearchService.js';
+import alternativeSearchService from '../services/alternativeSearchService.js';
 
 /**
  * Search torrents
  */
 export async function searchTorrents(req, res, next) {
     try {
-        const { q, category, limit, sort } = req.query;
+        const { q, category, limit, sort, source } = req.query;
 
         if (!q || q.trim().length === 0) {
             return res.status(400).json({
@@ -28,11 +30,23 @@ export async function searchTorrents(req, res, next) {
             sort: sort || 'seeders',
         };
 
-        const results = await torrentSearchService.searchTorrents(q, options);
+        let results = [];
+        const searchSource = source || 'yts'; // Default to YTS
+
+        if (searchSource === '1337x') {
+            results = await leetXSearchService.searchTorrents(q, options);
+        } else if (searchSource === 'alternative') {
+            // Try multiple providers to avoid Cloudflare
+            results = await alternativeSearchService.searchTorrents(q, options);
+        } else {
+            // Default to YTS
+            results = await torrentSearchService.searchTorrents(q, options);
+        }
 
         res.json({
             success: true,
             query: q,
+            source: searchSource,
             results,
             count: results.length,
         });
