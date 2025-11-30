@@ -10,11 +10,13 @@ import {
     ToggleButtonGroup,
     ToggleButton,
     Tooltip,
+    Typography,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import CloudIcon from '@mui/icons-material/Cloud';
 import ComputerIcon from '@mui/icons-material/Computer';
 import type { SearchResult } from '@/services/searchClient';
+import type { BrowserSearchResult } from '@/services/browserSearchClient';
 import * as searchClient from '@/services/searchClient';
 import * as browserSearchClient from '@/services/browserSearchClient';
 import SearchResults from './SearchResults';
@@ -61,14 +63,25 @@ const TorrentSearch: React.FC<TorrentSearchProps> = ({ onAddTorrent }) => {
 
             if (searchMode === 'browser') {
                 // Browser-based search (direct to YTS API)
-                searchResults = await browserSearchClient.searchTorrentsBrowser(query, {
-                    limit: 50,
+                const browserResults = await browserSearchClient.searchTorrentsBrowser(query, {
+                    limit: 200, // Request more results
                 });
+                // Convert BrowserSearchResult to SearchResult
+                searchResults = browserResults.map((result: BrowserSearchResult): SearchResult => ({
+                    name: result.name,
+                    magnetURI: result.magnetURI,
+                    size: result.size,
+                    seeders: result.seeders,
+                    leechers: result.leechers,
+                    category: result.category,
+                    uploadDate: result.uploadDate,
+                    source: result.source || 'YTS',
+                }));
             } else {
-                // Backend API search
+                // Backend API search - request more results
                 searchResults = await searchClient.searchTorrents(query, {
                     category: category || undefined,
-                    limit: 50,
+                    limit: 200, // Request up to 200 results
                 });
             }
 
@@ -78,7 +91,17 @@ const TorrentSearch: React.FC<TorrentSearchProps> = ({ onAddTorrent }) => {
                 setError('No torrents found. Try a different search query.');
             }
         } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'Failed to search torrents';
+            let errorMessage = err instanceof Error ? err.message : 'Failed to search torrents';
+            
+            // Provide helpful messages for common backend errors
+            if (errorMessage.includes('ECONNRESET') || errorMessage.includes('Network connection failed')) {
+                errorMessage = 'Network connection failed. This is usually caused by firewall/antivirus blocking Node.js. Please check TROUBLESHOOTING.md for solutions, or try using a VPN.';
+            } else if (errorMessage.includes('timed out')) {
+                errorMessage = 'Request timed out. The API may be slow or temporarily unavailable. Please try again in a moment.';
+            } else if (errorMessage.includes('All API mirrors failed')) {
+                errorMessage = 'All search API endpoints are currently unavailable. This may be a temporary issue. Please try again later or manually add torrents using magnet links.';
+            }
+            
             setError(errorMessage);
             setResults([]);
         } finally {
@@ -93,6 +116,14 @@ const TorrentSearch: React.FC<TorrentSearchProps> = ({ onAddTorrent }) => {
     return (
         <Box sx={{ mb: 4 }}>
             <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
+                {/* Info Alert */}
+                {searchMode === 'backend' && (
+                    <Box sx={{ mb: 2, p: 1.5, bgcolor: 'info.dark', borderRadius: 1 }}>
+                        <Typography variant="caption" sx={{ display: 'block', color: 'text.primary' }}>
+                            <strong>Note:</strong> Currently using YTS API (movies only). For TV shows and more results, consider using 1337x or other sources manually via magnet links.
+                        </Typography>
+                    </Box>
+                )}
                 {/* Search Mode Toggle */}
                 <Box sx={{ mb: 2, display: 'flex', justifyContent: 'center' }}>
                     <ToggleButtonGroup
@@ -158,8 +189,27 @@ const TorrentSearch: React.FC<TorrentSearchProps> = ({ onAddTorrent }) => {
             </Paper>
 
             {error && (
-                <Alert severity={results.length === 0 ? 'warning' : 'error'} sx={{ mb: 2 }}>
+                <Alert 
+                    severity={results.length === 0 ? 'warning' : 'error'} 
+                    sx={{ mb: 2 }}
+                    action={
+                        searchMode === 'browser' && error.includes('Browser search failed') ? (
+                            <Button 
+                                color="inherit" 
+                                size="small" 
+                                onClick={() => setSearchMode('backend')}
+                            >
+                                Switch to Backend
+                            </Button>
+                        ) : null
+                    }
+                >
                     {error}
+                    {searchMode === 'browser' && error.includes('Browser search failed') && (
+                        <Box sx={{ mt: 1, fontSize: '0.875rem' }}>
+                            <strong>Tip:</strong> Switch to "Backend API" mode above for more reliable searches.
+                        </Box>
+                    )}
                 </Alert>
             )}
 

@@ -13,6 +13,7 @@ export interface SearchResult {
     category: string;
     uploadDate: string;
     infoPage?: string;
+    source?: string; // Source/provider (e.g., "YTS", "1337x")
 }
 
 export interface SearchResponse {

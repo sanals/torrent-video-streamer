@@ -24,7 +24,7 @@ export async function searchTorrents(req, res, next) {
 
         const options = {
             category,
-            limit: limit ? parseInt(limit) : 25,
+            limit: limit ? Math.min(parseInt(limit), 200) : 200, // Allow up to 200 results
             sort: sort || 'seeders',
         };
 

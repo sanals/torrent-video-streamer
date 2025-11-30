@@ -205,20 +205,27 @@ const TorrentInput: React.FC<TorrentInputProps> = ({ onAdd, isAdding }) => {
                         </Box>
                     )}
 
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
+                    <Box sx={{ 
+                        display: 'flex', 
+                        justifyContent: { xs: 'stretch', sm: 'flex-end' }, 
+                        mt: 3 
+                    }}>
                         <Button
                             type="submit"
                             variant="contained"
                             startIcon={<AddIcon />}
                             disabled={isAdding || (!magnetURI.trim() && !selectedFile)}
                             size="large"
-                            fullWidth={{ xs: true, sm: false }}
+                            fullWidth
                             sx={{ 
                                 textTransform: 'none',
                                 fontWeight: 600,
                                 py: 1.5,
-                                minWidth: { sm: 160 },
-                                px: { sm: 4 }
+                                [theme => theme.breakpoints.up('sm')]: {
+                                    width: 'auto',
+                                    minWidth: 160,
+                                    px: 4
+                                }
                             }}
                         >
                             {isAdding ? 'Adding...' : 'Start Download'}

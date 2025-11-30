@@ -15,11 +15,85 @@ export interface BrowserSearchResult {
     uploadDate: string;
     quality?: string;
     rating?: number;
+    source?: string;
 }
 
 /**
  * Search torrents directly from browser
  */
+/**
+ * List of CORS proxy services to try (in order)
+ * Note: Some proxies may require activation or have rate limits
+ */
+const CORS_PROXIES = [
+    'https://api.allorigins.win/raw?url=',
+    'https://api.codetabs.com/v1/proxy?quest=',
+    'https://corsproxy.io/?',
+    'https://thingproxy.freeboard.io/fetch/',
+];
+
+/**
+ * Try fetching with multiple proxy fallbacks
+ */
+async function fetchWithProxies(targetUrl: string): Promise<Response> {
+    // First, try direct fetch with timeout
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+        
+        const directResponse = await fetch(targetUrl, {
+            method: 'GET',
+            mode: 'cors',
+            signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        
+        if (directResponse.ok) {
+            return directResponse;
+        }
+    } catch (directError) {
+        if (directError.name === 'AbortError') {
+            console.log('Direct fetch timed out, trying proxies...');
+        } else {
+            console.log('Direct fetch failed, trying proxies...');
+        }
+    }
+
+    // Try each proxy in order with timeout
+    for (const proxy of CORS_PROXIES) {
+        try {
+            const proxyUrl = proxy + encodeURIComponent(targetUrl);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout per proxy
+            
+            const response = await fetch(proxyUrl, {
+                method: 'GET',
+                signal: controller.signal,
+            });
+            clearTimeout(timeoutId);
+
+            if (response.ok) {
+                return response;
+            }
+
+            // If we get a 403, 400, or block, try next proxy
+            if (response.status === 403 || response.status === 400 || response.status === 429) {
+                console.log(`Proxy ${proxy} returned ${response.status}, trying next...`);
+                continue;
+            }
+        } catch (proxyError) {
+            if (proxyError.name === 'AbortError') {
+                console.log(`Proxy ${proxy} timed out, trying next...`);
+            } else {
+                console.log(`Proxy ${proxy} failed, trying next...`);
+            }
+            continue;
+        }
+    }
+
+    throw new Error('Browser search failed: All proxies are blocked or unavailable. Please use the "Backend API" search mode instead (toggle above the search box).');
+}
+
 export async function searchTorrentsBrowser(
     query: string,
     options?: {
@@ -35,14 +109,23 @@ export async function searchTorrentsBrowser(
             order_by: 'desc',
         });
 
-        // Use corsproxy.io as it handles some Cloudflare challenges better
         const targetUrl = `${YTS_API_BASE}/list_movies.json?${params}`;
-        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+        
+        // Try fetching with proxy fallbacks
+        const response = await fetchWithProxies(targetUrl);
 
-        const response = await fetch(proxyUrl, {
-            method: 'GET',
-            // Remove custom headers that might trigger preflight checks or be blocked by proxy
-        });
+        // Check if response is HTML (Cloudflare block page or error page)
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('text/html')) {
+            const text = await response.text();
+            if (text.includes('Cloudflare') || text.includes('challenge-platform') || text.includes('Attention Required')) {
+                throw new Error('Request blocked by Cloudflare. The search API is currently unavailable. Please try the backend search option or try again later.');
+            }
+            // If we get HTML but it's not Cloudflare, it might be an error page
+            if (text.includes('<!DOCTYPE html>') || text.includes('<html')) {
+                throw new Error('Received HTML response instead of JSON. The API may be temporarily unavailable.');
+            }
+        }
 
         if (!response.ok) {
             throw new Error(`API returned ${response.status}`);
@@ -65,17 +148,18 @@ export async function searchTorrentsBrowser(
         movies.forEach((movie: any) => {
             if (movie.torrents && movie.torrents.length > 0) {
                 movie.torrents.forEach((torrent: any) => {
-                    results.push({
-                        name: `${movie.title} (${movie.year}) [${torrent.quality}]`,
-                        magnetURI: buildMagnetLink(torrent.hash, movie.title),
-                        size: torrent.size_bytes || 0,
-                        seeders: torrent.seeds || 0,
-                        leechers: torrent.peers || 0,
-                        category: 'Movies',
-                        uploadDate: movie.date_uploaded || new Date().toISOString(),
-                        quality: torrent.quality,
-                        rating: movie.rating,
-                    });
+                        results.push({
+                            name: `${movie.title} (${movie.year}) [${torrent.quality}]`,
+                            magnetURI: buildMagnetLink(torrent.hash, movie.title),
+                            size: torrent.size_bytes || 0,
+                            seeders: torrent.seeds || 0,
+                            leechers: torrent.peers || 0,
+                            category: 'Movies',
+                            uploadDate: movie.date_uploaded || new Date().toISOString(),
+                            quality: torrent.quality,
+                            rating: movie.rating,
+                            source: 'YTS',
+                        });
                 });
             }
         });

@@ -46,6 +46,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({ results, onAdd }) => {
                         <TableRow>
                             <TableCell>Name</TableCell>
                             <TableCell>Category</TableCell>
+                            <TableCell>Source</TableCell>
                             <TableCell align="right">Size</TableCell>
                             <TableCell align="center">Seeders</TableCell>
                             <TableCell align="center">Leechers</TableCell>
@@ -63,6 +64,14 @@ const SearchResults: React.FC<SearchResultsProps> = ({ results, onAdd }) => {
                                 </TableCell>
                                 <TableCell>
                                     <Chip label={result.category} size="small" />
+                                </TableCell>
+                                <TableCell>
+                                    <Chip 
+                                        label={result.source || 'Unknown'} 
+                                        size="small" 
+                                        color={result.source === 'YTS' ? 'primary' : 'default'}
+                                        variant="outlined"
+                                    />
                                 </TableCell>
                                 <TableCell align="right">
                                     <Typography variant="body2">
