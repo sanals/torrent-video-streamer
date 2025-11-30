@@ -1,7 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Paper, Box, Typography, Button, IconButton } from '@mui/material';
+import { Paper, Box, Typography, IconButton } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
 import BufferOverlay from './BufferOverlay';
 import SubtitleControls from './SubtitleControls';
 import type { FileData } from '../../services/apiClient';
@@ -32,7 +31,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [subtitles, setSubtitles] = useState<Subtitle[]>([]);
-  const [poster, setPoster] = useState<string | undefined>(undefined);
   const [isBuffering, setIsBuffering] = useState(false);
   const [bufferPercent, setBufferPercent] = useState(0);
 
@@ -118,14 +116,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   };
 
-  // Handle poster image upload
-  const handlePosterUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setPoster(url);
-    }
-  };
 
   // Video event handlers for buffering - accurate detection
   useEffect(() => {
@@ -240,11 +230,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       subtitles.forEach((subtitle) => {
         URL.revokeObjectURL(subtitle.src);
       });
-      if (poster) {
-        URL.revokeObjectURL(poster);
-      }
     };
-  }, [subtitles, poster]);
+  }, [subtitles]);
 
   return (
     <Paper elevation={3} sx={{ mb: 3, overflow: 'hidden' }}>
@@ -261,27 +248,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           <Typography variant="h6" noWrap>
             {title}
           </Typography>
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button
-              component="label"
-              size="small"
-              startIcon={<UploadFileIcon />}
-              sx={{ mr: 1 }}
-            >
-              Poster
-              <input
-                type="file"
-                hidden
-                accept="image/*"
-                onChange={handlePosterUpload}
-              />
-            </Button>
-            {onClose && (
-              <IconButton onClick={onClose} size="small">
-                <CloseIcon />
-              </IconButton>
-            )}
-          </Box>
+          {onClose && (
+            <IconButton onClick={onClose} size="small">
+              <CloseIcon />
+            </IconButton>
+          )}
         </Box>
       )}
 
@@ -290,7 +261,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         <video
           ref={videoRef}
           src={src}
-          poster={poster}
           controls
           autoPlay
           playsInline
@@ -307,16 +277,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             // Notify backend that video paused (pause download if enabled)
             if (infoHash) {
               onVideoPause(infoHash);
-            }
-          }}
-          onFullscreenChange={() => {
-            // Handle fullscreen changes for mobile
-            if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
-              // Entered fullscreen
-              if (videoRef.current) {
-                videoRef.current.style.width = '100vw';
-                videoRef.current.style.height = '100vh';
-              }
             }
           }}
           style={{

@@ -161,10 +161,28 @@ const SubtitleControls: React.FC<SubtitleControlsProps> = ({
         : availableFiles.filter(file => isEnglish(file.name));
 
     return (
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', p: 2, bgcolor: 'background.paper' }}>
-            <SubtitlesIcon />
+        <Box 
+            sx={{ 
+                display: 'flex', 
+                gap: { xs: 1, sm: 2 }, 
+                alignItems: 'center',
+                flexWrap: 'nowrap',
+                p: { xs: 1.5, sm: 2 },
+                bgcolor: 'background.paper',
+                width: '100%'
+            }}
+        >
+            <SubtitlesIcon sx={{ flexShrink: 0, display: { xs: 'none', sm: 'block' } }} />
 
-            <FormControl size="small" sx={{ minWidth: 250 }}>
+            <FormControl 
+                size="small" 
+                sx={{ 
+                    minWidth: { xs: 100, sm: 250 },
+                    flex: { xs: '1 1 auto', sm: '0 0 auto' }, // Dynamic width on mobile, fixed on desktop
+                    flexShrink: 1, // Allow to shrink on mobile
+                    maxWidth: { xs: 'none', sm: 'none' }
+                }}
+            >
                 <InputLabel>Subtitles</InputLabel>
                 <Select
                     value={selectedTrack}
@@ -205,6 +223,15 @@ const SubtitleControls: React.FC<SubtitleControlsProps> = ({
                 variant="outlined"
                 startIcon={<UploadFileIcon />}
                 size="small"
+                sx={{ 
+                    flexShrink: 0, // Never shrink
+                    whiteSpace: 'nowrap',
+                    height: '40px',
+                    minHeight: '40px',
+                    maxHeight: '40px',
+                    minWidth: { xs: 'auto', sm: 'auto' },
+                    px: { xs: 1.5, sm: 2 }
+                }}
             >
                 Upload
                 <input
@@ -225,7 +252,10 @@ const SubtitleControls: React.FC<SubtitleControlsProps> = ({
                         />
                     }
                     label="Show all languages"
-                    sx={{ ml: 1 }}
+                    sx={{ 
+                        ml: { xs: 0, sm: 1 },
+                        display: { xs: 'none', sm: 'flex' }
+                    }}
                 />
             )}
         </Box>
