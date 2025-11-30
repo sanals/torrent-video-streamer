@@ -58,11 +58,28 @@ export async function searchTorrents(
         params.append('source', options.source);
     }
 
-    const response = await fetch(`${API_BASE_URL}/search?${params}`);
+    let response;
+    try {
+        response = await fetch(`${API_BASE_URL}/search?${params}`);
+    } catch (fetchError) {
+        // Network error (CORS, connection refused, etc.)
+        console.error('Search fetch error:', fetchError);
+        const errorMsg = fetchError instanceof Error ? fetchError.message : 'Network error';
+        if (errorMsg.includes('Failed to fetch') || errorMsg.includes('NetworkError')) {
+            throw new Error(`Cannot connect to backend API at ${API_BASE_URL}. Make sure the backend server is running and accessible.`);
+        }
+        throw fetchError;
+    }
 
     if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to search torrents');
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        try {
+            const error = await response.json();
+            errorMessage = error.error || errorMessage;
+        } catch {
+            // If response is not JSON, use status text
+        }
+        throw new Error(errorMessage);
     }
 
     const data: SearchResponse = await response.json();

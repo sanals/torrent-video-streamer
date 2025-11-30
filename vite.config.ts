@@ -12,6 +12,11 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    host: '0.0.0.0', // Listen on all interfaces (accessible via Tailscale IP)
+    strictPort: false,
+    hmr: {
+      host: 'localhost', // HMR only on localhost for security
+    },
   },
   build: {
     rollupOptions: {
