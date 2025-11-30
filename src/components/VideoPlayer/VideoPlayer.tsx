@@ -293,7 +293,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           poster={poster}
           controls
           autoPlay
+          playsInline
+          webkit-playsinline="true"
           crossOrigin="anonymous"
+          preload="metadata"
           onPlay={() => {
             // Notify backend that video started playing (resume download if paused)
             if (infoHash) {
@@ -306,12 +309,24 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               onVideoPause(infoHash);
             }
           }}
+          onFullscreenChange={() => {
+            // Handle fullscreen changes for mobile
+            if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
+              // Entered fullscreen
+              if (videoRef.current) {
+                videoRef.current.style.width = '100vw';
+                videoRef.current.style.height = '100vh';
+              }
+            }
+          }}
           style={{
             position: 'absolute',
             top: 0,
             left: 0,
             width: '100%',
             height: '100%',
+            objectFit: 'contain',
+            touchAction: 'none',
           }}
         >
           {subtitles.map((subtitle, index) => (

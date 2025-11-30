@@ -180,12 +180,30 @@ function App() {
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Box sx={{ mb: 4, textAlign: 'center' }}>
-          <Typography variant="h3" component="h1" gutterBottom>
+      <Container 
+        maxWidth="lg" 
+        sx={{ 
+          py: { xs: 2, sm: 4 },
+          px: { xs: 1, sm: 3 }
+        }}
+      >
+        <Box sx={{ mb: { xs: 2, sm: 4 }, textAlign: 'center' }}>
+          <Typography 
+            variant="h3" 
+            component="h1" 
+            gutterBottom
+            sx={{ 
+              fontSize: { xs: '1.75rem', sm: '2.5rem', md: '3rem' },
+              fontWeight: 600
+            }}
+          >
             🎬 Torrent Video Streamer
           </Typography>
-          <Typography variant="subtitle1" color="text.secondary">
+          <Typography 
+            variant="subtitle1" 
+            color="text.secondary"
+            sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+          >
             Stream videos directly from torrents
           </Typography>
         </Box>
