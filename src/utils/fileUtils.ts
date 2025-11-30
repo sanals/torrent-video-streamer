@@ -46,4 +46,45 @@ export function getMimeTypeFromExtension(ext: string): string {
     case 'ts': return 'video/mp2t';
     default: return 'application/octet-stream';
   }
+}
+
+/**
+ * Checks if a file is a subtitle file
+ * @param fileName File name to check
+ */
+export function isSubtitleFile(fileName: string): boolean {
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  return !!ext && ['srt', 'vtt', 'ass', 'ssa', 'sub'].includes(ext);
+}
+
+/**
+ * Categorizes files into Videos, Subtitles, and Other
+ */
+export type FileCategory = 'video' | 'subtitle' | 'other';
+
+export interface CategorizedFile {
+  file: { name: string; length: number; index: number; path: string };
+  category: FileCategory;
+}
+
+export function categorizeFiles(files: Array<{ name: string; length: number; index: number; path: string }>): {
+  videos: CategorizedFile[];
+  subtitles: CategorizedFile[];
+  other: CategorizedFile[];
+} {
+  const videos: CategorizedFile[] = [];
+  const subtitles: CategorizedFile[] = [];
+  const other: CategorizedFile[] = [];
+
+  files.forEach((file) => {
+    if (isVideoFile(file.name)) {
+      videos.push({ file, category: 'video' });
+    } else if (isSubtitleFile(file.name)) {
+      subtitles.push({ file, category: 'subtitle' });
+    } else {
+      other.push({ file, category: 'other' });
+    }
+  });
+
+  return { videos, subtitles, other };
 } 

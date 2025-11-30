@@ -38,16 +38,30 @@ export interface GetTorrentsResponse {
 }
 
 /**
- * Add a new torrent
+ * Add a new torrent (supports both magnet URI and .torrent file)
  */
-export async function addTorrent(magnetURI: string): Promise<TorrentData> {
-    const response = await fetch(`${API_BASE_URL}/torrents`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ magnetURI }),
-    });
+export async function addTorrent(magnetURI: string, torrentFile?: File): Promise<TorrentData> {
+    let response: Response;
+
+    if (torrentFile) {
+        // Upload .torrent file
+        const formData = new FormData();
+        formData.append('torrentFile', torrentFile);
+
+        response = await fetch(`${API_BASE_URL}/torrents`, {
+            method: 'POST',
+            body: formData,
+        });
+    } else {
+        // Send magnet URI
+        response = await fetch(`${API_BASE_URL}/torrents`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ magnetURI }),
+        });
+    }
 
     if (!response.ok) {
         const error = await response.json();

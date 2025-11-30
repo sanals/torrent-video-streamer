@@ -6,7 +6,7 @@ import type { TorrentData } from '@/services/apiClient';
 
 interface TorrentManagerProps {
     torrents: TorrentData[];
-    onAddTorrent: (magnetURI: string) => void;
+    onAddTorrent: (magnetURI: string, torrentFile?: File) => void;
     onRemoveTorrent: (infoHash: string, deleteData: boolean) => void; // Modified signature
     onPlayFile: (infoHash: string, fileIndex: number, fileName: string) => void;
     onPauseTorrent: (infoHash: string) => void; // New prop

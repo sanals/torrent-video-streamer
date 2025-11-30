@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Container, CssBaseline, ThemeProvider, createTheme, Snackbar, Alert, Typography, Box, Divider } from '@mui/material';
 import VideoPlayer from './components/VideoPlayer';
 import TorrentManager from './components/TorrentManager';
@@ -25,6 +25,7 @@ function App() {
   const [currentVideo, setCurrentVideo] = useState<CurrentVideo | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
+  const videoPlayerRef = useRef<HTMLDivElement>(null);
 
   // Connect to WebSocket on mount
   useEffect(() => {
@@ -62,12 +63,12 @@ function App() {
     }
   };
 
-  const handleAddTorrent = async (magnetURI: string) => {
+  const handleAddTorrent = async (magnetURI: string, torrentFile?: File) => {
     setIsAdding(true);
     setError(null);
 
     try {
-      const torrent = await apiClient.addTorrent(magnetURI);
+      const torrent = await apiClient.addTorrent(magnetURI, torrentFile);
       console.log('Torrent added:', torrent.name || torrent.infoHash);
       // Fetch updated list
       await fetchTorrents();
@@ -124,7 +125,27 @@ function App() {
       infoHash,
       fileIndex,
     });
+    
+    // Scroll to video player after a short delay to ensure it's rendered
+    setTimeout(() => {
+      videoPlayerRef.current?.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'start' 
+      });
+    }, 100);
   };
+
+  // Also scroll when currentVideo changes (e.g., from other sources)
+  useEffect(() => {
+    if (currentVideo && videoPlayerRef.current) {
+      setTimeout(() => {
+        videoPlayerRef.current?.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start' 
+        });
+      }, 100);
+    }
+  }, [currentVideo]);
 
   const handleCloseError = () => {
     setError(null);
@@ -143,15 +164,18 @@ function App() {
           </Typography>
         </Box>
 
-        {currentVideo && (
-          <VideoPlayer
-            src={currentVideo.url}
-            title={currentVideo.name}
-            onClose={() => setCurrentVideo(null)}
-            infoHash={currentVideo.infoHash}
-            fileIndex={currentVideo.fileIndex}
-          />
-        )}
+        <Box ref={videoPlayerRef}>
+          {currentVideo && (
+            <VideoPlayer
+              src={currentVideo.url}
+              title={currentVideo.name}
+              onClose={() => setCurrentVideo(null)}
+              infoHash={currentVideo.infoHash}
+              fileIndex={currentVideo.fileIndex}
+              files={torrents.find(t => t.infoHash === currentVideo.infoHash)?.files || []}
+            />
+          )}
+        </Box>
 
         <TorrentSearch onAddTorrent={handleAddTorrent} />
 

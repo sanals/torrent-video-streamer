@@ -3,8 +3,8 @@ import * as torrentController from '../controllers/torrentController.js';
 
 const router = Router();
 
-// POST /api/torrents - Add new torrent
-router.post('/torrents', torrentController.addTorrent);
+// POST /api/torrents - Add new torrent (supports both magnet URI and .torrent file)
+router.post('/torrents', torrentController.upload.single('torrentFile'), torrentController.addTorrent);
 
 // GET /api/torrents - Get all torrents
 router.get('/torrents', torrentController.getAllTorrents);

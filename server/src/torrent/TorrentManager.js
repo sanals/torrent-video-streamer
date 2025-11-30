@@ -54,6 +54,30 @@ class TorrentManager {
     }
 
     /**
+     * Add a torrent from a .torrent file buffer
+     * @param {Buffer} torrentBuffer - Torrent file buffer
+     * @returns {Promise<object>} Torrent info
+     */
+    addTorrentFile(torrentBuffer) {
+        return new Promise((resolve, reject) => {
+            console.log('📥 Adding torrent from file...');
+
+            const torrent = this.client.add(torrentBuffer, (torrent) => {
+                // Use magnetURI as key, or infoHash if magnetURI is not available
+                const key = torrent.magnetURI || torrent.infoHash;
+                this.torrents.set(key, torrent);
+                console.log('✅ Torrent added from file:', torrent.name || torrent.infoHash);
+                resolve(this.serializeTorrent(torrent));
+            });
+
+            torrent.on('error', (err) => {
+                console.error('❌ Torrent error:', err.message);
+                reject(new Error(`Torrent error: ${err.message}`));
+            });
+        });
+    }
+
+    /**
      * Remove a torrent
      * @param {string} infoHash - Torrent info hash
      * @returns {Promise<void>}

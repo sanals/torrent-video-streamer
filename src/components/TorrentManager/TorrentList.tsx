@@ -21,12 +21,19 @@ import {
     FormControlLabel,
     Checkbox,
     Tooltip,
+    Collapse,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
+import VideoFileIcon from '@mui/icons-material/VideoFile';
+import SubtitlesIcon from '@mui/icons-material/Subtitles';
+import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import type { TorrentData } from '@/services/apiClient';
 import { formatBytes } from '@/utils/formatUtils';
+import { categorizeFiles } from '@/utils/fileUtils';
 
 interface TorrentListProps {
     torrents: TorrentData[];
@@ -46,6 +53,8 @@ const TorrentList: React.FC<TorrentListProps> = ({
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [torrentToDelete, setTorrentToDelete] = useState<string | null>(null);
     const [deleteData, setDeleteData] = useState(false);
+    // Track collapsed state for each section per torrent: { torrentHash: { videos: boolean, subtitles: boolean, other: boolean } }
+    const [collapsedSections, setCollapsedSections] = useState<Record<string, { videos: boolean; subtitles: boolean; other: boolean }>>({});
 
     const handleDeleteClick = (infoHash: string) => {
         setTorrentToDelete(infoHash);
@@ -66,6 +75,20 @@ const TorrentList: React.FC<TorrentListProps> = ({
         setTorrentToDelete(null);
     };
 
+    const toggleSection = (torrentHash: string, section: 'videos' | 'subtitles' | 'other') => {
+        setCollapsedSections(prev => ({
+            ...prev,
+            [torrentHash]: {
+                ...prev[torrentHash],
+                [section]: !prev[torrentHash]?.[section]
+            }
+        }));
+    };
+
+    const isSectionCollapsed = (torrentHash: string, section: 'videos' | 'subtitles' | 'other'): boolean => {
+        return collapsedSections[torrentHash]?.[section] ?? false;
+    };
+
     if (torrents.length === 0) {
         return (
             <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
@@ -80,8 +103,25 @@ const TorrentList: React.FC<TorrentListProps> = ({
                 {torrents.map((torrent) => (
                     <Card key={torrent.infoHash} variant="outlined">
                         <CardContent>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                                <Typography variant="h6" noWrap sx={{ maxWidth: '70%' }} title={torrent.name}>
+                            <Box sx={{ 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                alignItems: 'flex-start', 
+                                mb: 1,
+                                flexDirection: { xs: 'column', sm: 'row' },
+                                gap: { xs: 1, sm: 0 }
+                            }}>
+                                <Typography 
+                                    variant="h6" 
+                                    sx={{ 
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                        maxWidth: { xs: '100%', sm: '70%' },
+                                        fontSize: { xs: '1rem', sm: '1.25rem' }
+                                    }} 
+                                    title={torrent.name}
+                                >
                                     {torrent.name || 'Loading metadata...'}
                                 </Typography>
                                 <Box>
@@ -133,29 +173,222 @@ const TorrentList: React.FC<TorrentListProps> = ({
 
                             <Divider sx={{ my: 1 }} />
 
-                            <Typography variant="subtitle2" gutterBottom>
+                            <Typography variant="subtitle2" gutterBottom sx={{ mb: 1 }}>
                                 Files
                             </Typography>
-                            <List dense disablePadding>
-                                {torrent.files.map((file) => (
-                                    <ListItem key={`${torrent.infoHash}-${file.index}`} disableGutters>
-                                        <ListItemText
-                                            primary={file.name}
-                                            secondary={formatBytes(file.length)}
-                                            primaryTypographyProps={{ noWrap: true }}
-                                        />
-                                        <ListItemSecondaryAction>
-                                            <IconButton
-                                                edge="end"
-                                                color="primary"
-                                                onClick={() => onPlayFile(torrent.infoHash, file.index, file.name)}
-                                            >
-                                                <PlayArrowIcon />
-                                            </IconButton>
-                                        </ListItemSecondaryAction>
-                                    </ListItem>
-                                ))}
-                            </List>
+                            
+                            {(() => {
+                                const { videos, subtitles, other } = categorizeFiles(torrent.files);
+                                
+                                return (
+                                    <Box>
+                                        {/* Videos Section */}
+                                        {videos.length > 0 && (
+                                            <Box sx={{ mb: 2 }}>
+                                                <Box 
+                                                    sx={{ 
+                                                        display: 'flex', 
+                                                        alignItems: 'center', 
+                                                        mb: 1,
+                                                        cursor: 'pointer',
+                                                        '&:hover': { opacity: 0.8 }
+                                                    }}
+                                                    onClick={() => toggleSection(torrent.infoHash, 'videos')}
+                                                >
+                                                    <VideoFileIcon sx={{ mr: 1, fontSize: { xs: 16, sm: 18 }, color: 'primary.main' }} />
+                                                    <Typography 
+                                                        variant="overline" 
+                                                        color="primary" 
+                                                        sx={{ 
+                                                            fontWeight: 600, 
+                                                            flex: 1,
+                                                            fontSize: { xs: '0.65rem', sm: '0.75rem' },
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis',
+                                                            whiteSpace: 'nowrap'
+                                                        }}
+                                                    >
+                                                        Videos ({videos.length})
+                                                    </Typography>
+                                                    <IconButton size="small" sx={{ p: 0.5, ml: 1 }}>
+                                                        {isSectionCollapsed(torrent.infoHash, 'videos') ? 
+                                                            <ExpandMoreIcon fontSize="small" /> : 
+                                                            <ExpandLessIcon fontSize="small" />
+                                                        }
+                                                    </IconButton>
+                                                </Box>
+                                                <Collapse in={!isSectionCollapsed(torrent.infoHash, 'videos')}>
+                                                    <List dense disablePadding>
+                                                        {videos.map(({ file }) => (
+                                                            <ListItem 
+                                                                key={`${torrent.infoHash}-${file.index}`} 
+                                                                disableGutters
+                                                                sx={{ 
+                                                                    pl: 2,
+                                                                    '&:hover': { bgcolor: 'action.hover' },
+                                                                    borderRadius: 1
+                                                                }}
+                                                            >
+                                                                <ListItemText
+                                                                    primary={file.name}
+                                                                    secondary={formatBytes(file.length)}
+                                                                    primaryTypographyProps={{ 
+                                                                    noWrap: true,
+                                                                    sx: { fontSize: '0.875rem' }
+                                                                }}
+                                                                secondaryTypographyProps={{ 
+                                                                    sx: { fontSize: '0.75rem' }
+                                                                }}
+                                                            />
+                                                                <ListItemSecondaryAction>
+                                                                    <IconButton
+                                                                        edge="end"
+                                                                        color="primary"
+                                                                        size="small"
+                                                                        onClick={() => onPlayFile(torrent.infoHash, file.index, file.name)}
+                                                                    >
+                                                                        <PlayArrowIcon />
+                                                                    </IconButton>
+                                                                </ListItemSecondaryAction>
+                                                            </ListItem>
+                                                        ))}
+                                                    </List>
+                                                </Collapse>
+                                            </Box>
+                                        )}
+
+                                        {/* Subtitles Section */}
+                                        {subtitles.length > 0 && (
+                                            <Box sx={{ mb: 2 }}>
+                                                <Box 
+                                                    sx={{ 
+                                                        display: 'flex', 
+                                                        alignItems: 'center', 
+                                                        mb: 1,
+                                                        cursor: 'pointer',
+                                                        '&:hover': { opacity: 0.8 }
+                                                    }}
+                                                    onClick={() => toggleSection(torrent.infoHash, 'subtitles')}
+                                                >
+                                                    <SubtitlesIcon sx={{ mr: 1, fontSize: { xs: 16, sm: 18 }, color: 'text.secondary' }} />
+                                                    <Typography 
+                                                        variant="overline" 
+                                                        color="text.secondary" 
+                                                        sx={{ 
+                                                            fontWeight: 600, 
+                                                            flex: 1,
+                                                            fontSize: { xs: '0.65rem', sm: '0.75rem' },
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis',
+                                                            whiteSpace: 'nowrap'
+                                                        }}
+                                                    >
+                                                        Subtitles ({subtitles.length})
+                                                    </Typography>
+                                                    <IconButton size="small" sx={{ p: 0.5, ml: 1 }}>
+                                                        {isSectionCollapsed(torrent.infoHash, 'subtitles') ? 
+                                                            <ExpandMoreIcon fontSize="small" /> : 
+                                                            <ExpandLessIcon fontSize="small" />
+                                                        }
+                                                    </IconButton>
+                                                </Box>
+                                                <Collapse in={!isSectionCollapsed(torrent.infoHash, 'subtitles')}>
+                                                    <List dense disablePadding>
+                                                        {subtitles.map(({ file }) => (
+                                                            <ListItem 
+                                                                key={`${torrent.infoHash}-${file.index}`} 
+                                                                disableGutters
+                                                                sx={{ 
+                                                                    pl: 2,
+                                                                    '&:hover': { bgcolor: 'action.hover' },
+                                                                    borderRadius: 1
+                                                                }}
+                                                            >
+                                                                <ListItemText
+                                                                    primary={file.name}
+                                                                    secondary={formatBytes(file.length)}
+                                                                    primaryTypographyProps={{ 
+                                                                        noWrap: true,
+                                                                        sx: { fontSize: '0.875rem' }
+                                                                    }}
+                                                                    secondaryTypographyProps={{ 
+                                                                        sx: { fontSize: '0.75rem' }
+                                                                    }}
+                                                                />
+                                                            </ListItem>
+                                                        ))}
+                                                    </List>
+                                                </Collapse>
+                                            </Box>
+                                        )}
+
+                                        {/* Other Files Section */}
+                                        {other.length > 0 && (
+                                            <Box>
+                                                <Box 
+                                                    sx={{ 
+                                                        display: 'flex', 
+                                                        alignItems: 'center', 
+                                                        mb: 1,
+                                                        cursor: 'pointer',
+                                                        '&:hover': { opacity: 0.8 }
+                                                    }}
+                                                    onClick={() => toggleSection(torrent.infoHash, 'other')}
+                                                >
+                                                    <InsertDriveFileIcon sx={{ mr: 1, fontSize: { xs: 16, sm: 18 }, color: 'text.secondary' }} />
+                                                    <Typography 
+                                                        variant="overline" 
+                                                        color="text.secondary" 
+                                                        sx={{ 
+                                                            fontWeight: 600, 
+                                                            flex: 1,
+                                                            fontSize: { xs: '0.65rem', sm: '0.75rem' },
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis',
+                                                            whiteSpace: 'nowrap'
+                                                        }}
+                                                    >
+                                                        Other Files ({other.length})
+                                                    </Typography>
+                                                    <IconButton size="small" sx={{ p: 0.5, ml: 1 }}>
+                                                        {isSectionCollapsed(torrent.infoHash, 'other') ? 
+                                                            <ExpandMoreIcon fontSize="small" /> : 
+                                                            <ExpandLessIcon fontSize="small" />
+                                                        }
+                                                    </IconButton>
+                                                </Box>
+                                                <Collapse in={!isSectionCollapsed(torrent.infoHash, 'other')}>
+                                                    <List dense disablePadding>
+                                                        {other.map(({ file }) => (
+                                                            <ListItem 
+                                                                key={`${torrent.infoHash}-${file.index}`} 
+                                                                disableGutters
+                                                                sx={{ 
+                                                                    pl: 2,
+                                                                    '&:hover': { bgcolor: 'action.hover' },
+                                                                    borderRadius: 1
+                                                                }}
+                                                            >
+                                                                <ListItemText
+                                                                    primary={file.name}
+                                                                    secondary={formatBytes(file.length)}
+                                                                    primaryTypographyProps={{ 
+                                                                        noWrap: true,
+                                                                        sx: { fontSize: '0.875rem' }
+                                                                    }}
+                                                                    secondaryTypographyProps={{ 
+                                                                        sx: { fontSize: '0.75rem' }
+                                                                    }}
+                                                                />
+                                                            </ListItem>
+                                                        ))}
+                                                    </List>
+                                                </Collapse>
+                                            </Box>
+                                        )}
+                                    </Box>
+                                );
+                            })()}
                         </CardContent>
                     </Card>
                 ))}

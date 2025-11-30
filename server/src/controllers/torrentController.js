@@ -1,16 +1,47 @@
 import torrentManager from '../torrent/TorrentManager.js';
+import multer from 'multer';
+
+// Configure multer for in-memory file storage
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+        fileSize: 10 * 1024 * 1024, // 10MB limit for torrent files
+    },
+    fileFilter: (req, file, cb) => {
+        // Accept .torrent files
+        if (file.mimetype === 'application/x-bittorrent' || 
+            file.originalname.endsWith('.torrent')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Invalid file type. Only .torrent files are allowed.'));
+        }
+    },
+});
 
 /**
- * Add a new torrent
+ * Add a new torrent (supports both magnet URI and .torrent file)
  */
 export async function addTorrent(req, res, next) {
     try {
+        // Check if file was uploaded
+        if (req.file) {
+            // Handle .torrent file upload
+            const torrentBuffer = req.file.buffer;
+            const torrent = await torrentManager.addTorrentFile(torrentBuffer);
+            
+            return res.status(201).json({
+                success: true,
+                torrent,
+            });
+        }
+
+        // Handle magnet URI
         const { magnetURI } = req.body;
 
         if (!magnetURI) {
             return res.status(400).json({
                 success: false,
-                error: 'magnetURI is required',
+                error: 'Either magnetURI or torrent file is required',
             });
         }
 
@@ -32,6 +63,9 @@ export async function addTorrent(req, res, next) {
         next(error);
     }
 }
+
+// Export multer middleware for use in routes
+export { upload };
 
 /**
  * Get all torrents
