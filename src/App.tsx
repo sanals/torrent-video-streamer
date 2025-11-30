@@ -47,8 +47,16 @@ function App() {
     // Fetch initial torrents
     fetchTorrents();
 
+    // Handle browser close/refresh - try to disconnect cleanly
+    const handleBeforeUnload = () => {
+      websocketClient.disconnect();
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     // Cleanup on unmount
     return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       websocketClient.off('torrent:progress', handleProgress);
       websocketClient.off('torrent:update', handleUpdate);
       websocketClient.disconnect();
@@ -200,15 +208,16 @@ function App() {
         <Divider sx={{ my: 4 }} />
 
         <Box ref={torrentManagerRef}>
-          <TorrentManager
-            torrents={torrents}
-            onAddTorrent={handleAddTorrent}
-            onRemoveTorrent={handleRemoveTorrent}
-            onPlayFile={handlePlayFile}
-            onPauseTorrent={handlePauseTorrent}
-            onResumeTorrent={handleResumeTorrent}
-            isAdding={isAdding}
-          />
+        <TorrentManager
+          torrents={torrents}
+          onAddTorrent={handleAddTorrent}
+          onRemoveTorrent={handleRemoveTorrent}
+          onPlayFile={handlePlayFile}
+          onPauseTorrent={handlePauseTorrent}
+          onResumeTorrent={handleResumeTorrent}
+          isAdding={isAdding}
+          currentVideo={currentVideo}
+        />
         </Box>
 
         <Snackbar open={!!error} autoHideDuration={6000} onClose={handleCloseError}>

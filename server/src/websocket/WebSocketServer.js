@@ -40,6 +40,13 @@ class WebSocketServerManager {
                 // Stop polling if no clients
                 if (this.clients.size === 0) {
                     this.stopProgressPolling();
+                    
+                    // Delete all torrents when no clients are connected
+                    // This prevents torrents from continuing to download after browser closes
+                    const autoDeleteOnDisconnect = process.env.AUTO_DELETE_ON_DISCONNECT !== 'false';
+                    if (autoDeleteOnDisconnect) {
+                        this.deleteAllTorrents();
+                    }
                 }
             });
 
@@ -145,6 +152,27 @@ class WebSocketServerManager {
         this.clients.forEach((ws) => {
             this.sendMessage(ws, message);
         });
+    }
+
+    /**
+     * Delete all torrents (when no clients connected)
+     */
+    async deleteAllTorrents() {
+        const torrents = torrentManager.getAllTorrents();
+        let deletedCount = 0;
+        
+        for (const torrent of torrents) {
+            try {
+                await torrentManager.removeTorrent(torrent.infoHash, false); // Don't delete data, just remove from manager
+                deletedCount++;
+            } catch (error) {
+                console.error(`❌ Error removing torrent ${torrent.infoHash}:`, error.message);
+            }
+        }
+        
+        if (deletedCount > 0) {
+            console.log(`🗑️  Deleted ${deletedCount} torrent(s) - no clients connected`);
+        }
     }
 
     /**

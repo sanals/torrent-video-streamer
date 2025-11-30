@@ -28,6 +28,7 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 import VideoFileIcon from '@mui/icons-material/VideoFile';
 import SubtitlesIcon from '@mui/icons-material/Subtitles';
+import VideocamIcon from '@mui/icons-material/Videocam';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
@@ -42,6 +43,7 @@ interface TorrentListProps {
     onPlayFile: (infoHash: string, fileIndex: number, fileName: string) => void;
     onPauseTorrent: (infoHash: string) => void;
     onResumeTorrent: (infoHash: string) => void;
+    currentVideo: { infoHash: string; fileIndex: number; name: string; url: string } | null;
 }
 
 const TorrentList: React.FC<TorrentListProps> = ({
@@ -49,7 +51,8 @@ const TorrentList: React.FC<TorrentListProps> = ({
     onRemoveTorrent,
     onPlayFile,
     onPauseTorrent,
-    onResumeTorrent
+    onResumeTorrent,
+    currentVideo
 }) => {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [torrentToDelete, setTorrentToDelete] = useState<string | null>(null);
@@ -254,47 +257,84 @@ const TorrentList: React.FC<TorrentListProps> = ({
                                                 </Box>
                                                 <Collapse in={!isSectionCollapsed(torrent.infoHash, 'videos')}>
                                                     <List dense disablePadding>
-                                                        {videos.map(({ file }) => (
-                                                            <ListItem 
-                                                                key={`${torrent.infoHash}-${file.index}`} 
-                                                                disableGutters
-                                                                sx={{ 
-                                                                    pl: 2,
-                                                                    '&:hover': { bgcolor: 'action.hover' },
-                                                                    borderRadius: 1
-                                                                }}
-                                                            >
-                                                                <ListItemText
-                                                                    primary={file.name}
-                                                                    secondary={formatBytes(file.length)}
-                                                                    primaryTypographyProps={{ 
-                                                                    noWrap: true,
-                                                                    sx: { fontSize: '0.875rem' }
-                                                                }}
-                                                                secondaryTypographyProps={{ 
-                                                                    sx: { fontSize: '0.75rem' }
-                                                                }}
-                                                            />
-                                                                <ListItemSecondaryAction>
-                                                                    <Tooltip title={torrent.paused ? "Start downloading the torrent first (use the download button in the header)" : "Play Video"}>
-                                                                        <span>
-                                                                            <IconButton
-                                                                                edge="end"
-                                                                                color="primary"
-                                                                                size="small"
-                                                                                disabled={torrent.paused}
-                                                                                onClick={(e) => {
-                                                                                    e.stopPropagation();
-                                                                                    onPlayFile(torrent.infoHash, file.index, file.name);
-                                                                                }}
-                                                                            >
-                                                                                <PlayArrowIcon />
-                                                                            </IconButton>
-                                                                        </span>
-                                                                    </Tooltip>
-                                                                </ListItemSecondaryAction>
-                                                            </ListItem>
-                                                        ))}
+                                                        {videos.map(({ file }) => {
+                                                            const isCurrentlyPlaying = currentVideo?.infoHash === torrent.infoHash && currentVideo?.fileIndex === file.index;
+                                                            
+                                                            return (
+                                                                <ListItem 
+                                                                    key={`${torrent.infoHash}-${file.index}`} 
+                                                                    disableGutters
+                                                                    sx={{ 
+                                                                        pl: 2,
+                                                                        bgcolor: isCurrentlyPlaying ? 'primary.dark' : 'transparent',
+                                                                        borderLeft: isCurrentlyPlaying ? 3 : 0,
+                                                                        borderColor: 'primary.main',
+                                                                        '&:hover': { bgcolor: isCurrentlyPlaying ? 'primary.dark' : 'action.hover' },
+                                                                        borderRadius: 1,
+                                                                        transition: 'all 0.2s ease-in-out'
+                                                                    }}
+                                                                >
+                                                                    {isCurrentlyPlaying && (
+                                                                        <VideocamIcon 
+                                                                            sx={{ 
+                                                                                mr: 1, 
+                                                                                color: 'primary.light',
+                                                                                fontSize: '1.2rem'
+                                                                            }} 
+                                                                        />
+                                                                    )}
+                                                                    <ListItemText
+                                                                        primary={
+                                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                                {file.name}
+                                                                                {isCurrentlyPlaying && (
+                                                                                    <Typography 
+                                                                                        variant="caption" 
+                                                                                        sx={{ 
+                                                                                            color: 'primary.light',
+                                                                                            fontWeight: 600,
+                                                                                            fontStyle: 'italic'
+                                                                                        }}
+                                                                                    >
+                                                                                        (Playing)
+                                                                                    </Typography>
+                                                                                )}
+                                                                            </Box>
+                                                                        }
+                                                                        secondary={formatBytes(file.length)}
+                                                                        primaryTypographyProps={{ 
+                                                                            noWrap: true,
+                                                                            sx: { 
+                                                                                fontSize: '0.875rem',
+                                                                                color: isCurrentlyPlaying ? 'primary.light' : 'text.primary',
+                                                                                fontWeight: isCurrentlyPlaying ? 600 : 400
+                                                                            }
+                                                                        }}
+                                                                        secondaryTypographyProps={{ 
+                                                                            sx: { fontSize: '0.75rem' }
+                                                                        }}
+                                                                    />
+                                                                    <ListItemSecondaryAction>
+                                                                        <Tooltip title={torrent.paused ? "Start downloading the torrent first (use the download button in the header)" : "Play Video"}>
+                                                                            <span>
+                                                                                <IconButton
+                                                                                    edge="end"
+                                                                                    color={isCurrentlyPlaying ? "secondary" : "primary"}
+                                                                                    size="small"
+                                                                                    disabled={torrent.paused}
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        onPlayFile(torrent.infoHash, file.index, file.name);
+                                                                                    }}
+                                                                                >
+                                                                                    <PlayArrowIcon />
+                                                                                </IconButton>
+                                                                            </span>
+                                                                        </Tooltip>
+                                                                    </ListItemSecondaryAction>
+                                                                </ListItem>
+                                                            );
+                                                        })}
                                                     </List>
                                                 </Collapse>
                                             </Box>

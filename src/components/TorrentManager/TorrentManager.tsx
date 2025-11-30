@@ -12,6 +12,7 @@ interface TorrentManagerProps {
     onPauseTorrent: (infoHash: string) => void; // New prop
     onResumeTorrent: (infoHash: string) => void; // New prop
     isAdding: boolean;
+    currentVideo: { infoHash: string; fileIndex: number; name: string; url: string } | null;
 }
 
 const TorrentManager: React.FC<TorrentManagerProps> = ({
@@ -22,6 +23,7 @@ const TorrentManager: React.FC<TorrentManagerProps> = ({
     onPauseTorrent, // Destructure new prop
     onResumeTorrent, // Destructure new prop
     isAdding,
+    currentVideo,
 }) => {
     return (
         <Box>
@@ -32,6 +34,7 @@ const TorrentManager: React.FC<TorrentManagerProps> = ({
                 onPlayFile={onPlayFile}
                 onPauseTorrent={onPauseTorrent} // Pass new prop
                 onResumeTorrent={onResumeTorrent} // Pass new prop
+                currentVideo={currentVideo}
             />
         </Box>
     );
