@@ -1,5 +1,6 @@
 // HTTP client service for Torrent Video Streamer
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError, CancelTokenSource } from 'axios';
+import axios from 'axios';
+import type { AxiosInstance, AxiosResponse, AxiosRequestConfig, CancelTokenSource } from 'axios';
 
 // Create Axios instance with base config
 const api: AxiosInstance = axios.create({
@@ -77,4 +78,4 @@ export function createCancelToken(): CancelTokenSource {
   return axios.CancelToken.source();
 }
 
-export default api; 
+export default api;

@@ -1,5 +1,5 @@
 // API response types for the Torrent Video Streamer app
-import { SearchResult } from './torrent';
+import type { SearchResult } from './torrent';
 
 /**
  * Represents the response from a torrent search API.

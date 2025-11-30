@@ -1,4 +1,5 @@
-import React, { createContext, useReducer, useContext, ReactNode, Dispatch } from 'react';
+import { createContext, useReducer, useContext } from 'react';
+import type { ReactNode } from 'react';
 import type { TorrentData } from '@/types/torrent';
 
 // --- Types ---

@@ -1,5 +1,6 @@
 // Core torrent service for Torrent Video Streamer
-import WebTorrent, { Torrent, TorrentFile } from 'webtorrent';
+import WebTorrent from 'webtorrent';
+import type { Torrent } from 'webtorrent';
 import type { TorrentData, VideoFile } from '@/types/torrent';
 import { isVideoFile } from '@/utils/fileUtils';
 import { getMimeTypeFromExtension } from '@/utils/fileUtils';
@@ -43,20 +44,34 @@ class TorrentService {
         resolve(this.toTorrentData(torrent));
         return;
       }
-      const torrent = this.client.add(source, (torrent) => {
+
+      try {
+        const torrent = this.client.add(source, {
+          // Optional: Add specific options here if needed
+        });
+
+        // Store immediately
         this.torrents.set(source, torrent);
+
+        // Set up listeners
         if (onProgress) {
           torrent.on('download', () => onProgress(this.toTorrentData(torrent)));
           torrent.on('upload', () => onProgress(this.toTorrentData(torrent)));
           torrent.on('done', () => onProgress(this.toTorrentData(torrent)));
         }
+
+        // Handle errors
+        torrent.on('error', (err) => {
+          this.torrents.delete(source);
+          const errorMsg = typeof err === 'string' ? err : err?.message || 'Unknown error';
+          console.error(`Torrent error for ${source}:`, errorMsg);
+        });
+
+        // Resolve immediately with initial data
         resolve(this.toTorrentData(torrent));
-      });
-      torrent.on('error', (err) => {
-        this.torrents.delete(source);
-        const errorMsg = typeof err === 'string' ? err : err?.message || 'Unknown error';
-        reject(new Error(`Torrent error: ${errorMsg}`));
-      });
+      } catch (err) {
+        reject(err);
+      }
     });
   }
 
@@ -176,6 +191,7 @@ class TorrentService {
           length: file.length,
           type: getMimeTypeFromExtension(ext),
           getBlobURL,
+          extension: ext,
         };
       }),
       progress: torrent.progress,
@@ -198,4 +214,4 @@ class TorrentService {
 }
 
 export const torrentService = TorrentService.getInstance();
-export default torrentService; 
+export default torrentService;
