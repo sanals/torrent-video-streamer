@@ -57,32 +57,15 @@ class TorrentManager {
             // Add torrent with callback (callback fires when metadata is ready)
             // We need the callback for the torrent to appear in UI
             const torrent = this.client.add(magnetURI, options, (torrent) => {
-                // Add to map first so it appears in UI
+                // Add to map so it appears in UI
                 this.torrents.set(magnetURI, torrent);
                 
-                // Then pause it (after a small delay to ensure it's in the map)
-                setTimeout(() => {
-                    torrent.pause();
-                    console.log(`⏸️  Torrent paused after being added: ${torrent.name || torrent.infoHash}`);
-                }, 100);
+                console.log(`✅ Torrent added: ${torrent.name || torrent.infoHash} (${this.useMemoryStorage ? 'Memory' : 'Disk'} storage)`);
                 
-                console.log(`✅ Torrent added (will be paused): ${torrent.name || torrent.infoHash} (${this.useMemoryStorage ? 'Memory' : 'Disk'} storage)`);
-                
-                // Resolve with serialized torrent (it will show as paused in UI)
+                // Resolve with serialized torrent
                 const serialized = this.serializeTorrent(torrent);
                 resolve(serialized);
             });
-            
-            // Set up event listeners to keep it paused if it tries to start
-            if (torrent) {
-                torrent.on('download', () => {
-                    // If download starts before callback fires, pause it
-                    if (!this.torrents.has(magnetURI)) {
-                        torrent.pause();
-                        console.log('⏸️  Paused torrent that started downloading before callback');
-                    }
-                });
-            }
 
             torrent.on('error', (err) => {
                 console.error('❌ Torrent error:', err.message);
@@ -114,33 +97,15 @@ class TorrentManager {
                 // Use magnetURI as key, or infoHash if magnetURI is not available
                 const key = torrent.magnetURI || torrent.infoHash;
                 
-                // Add to map first so it appears in UI
+                // Add to map so it appears in UI
                 this.torrents.set(key, torrent);
                 
-                // Then pause it (after a small delay to ensure it's in the map)
-                setTimeout(() => {
-                    torrent.pause();
-                    console.log(`⏸️  Torrent paused after being added from file: ${torrent.name || torrent.infoHash}`);
-                }, 100);
+                console.log(`✅ Torrent added from file: ${torrent.name || torrent.infoHash} (${this.useMemoryStorage ? 'Memory' : 'Disk'} storage)`);
                 
-                console.log(`✅ Torrent added from file (will be paused): ${torrent.name || torrent.infoHash} (${this.useMemoryStorage ? 'Memory' : 'Disk'} storage)`);
-                
-                // Resolve with serialized torrent (it will show as paused in UI)
+                // Resolve with serialized torrent
                 const serialized = this.serializeTorrent(torrent);
                 resolve(serialized);
             });
-            
-            // Set up event listeners to keep it paused if it tries to start
-            if (torrent) {
-                torrent.on('download', () => {
-                    // If download starts before callback fires, pause it
-                    const key = torrent.magnetURI || torrent.infoHash;
-                    if (!this.torrents.has(key)) {
-                        torrent.pause();
-                        console.log('⏸️  Paused torrent from file that started downloading before callback');
-                    }
-                });
-            }
 
             torrent.on('error', (err) => {
                 console.error('❌ Torrent error:', err.message);
@@ -198,8 +163,15 @@ class TorrentManager {
     pauseTorrent(infoHash) {
         const torrent = this.getTorrentByInfoHash(infoHash);
         if (torrent) {
+            // Pause the torrent
             torrent.pause();
-            console.log('Hz Paused torrent:', infoHash);
+            
+            // Deselect all files to stop downloading
+            torrent.files.forEach((file) => {
+                file.deselect();
+            });
+            
+            console.log(`⏸️  Paused torrent and deselected all files: ${infoHash}`);
             return true;
         }
         return false;
@@ -213,7 +185,17 @@ class TorrentManager {
         const torrent = this.getTorrentByInfoHash(infoHash);
         if (torrent) {
             console.log(`▶️  Resuming torrent: ${infoHash} (${torrent.name || 'unnamed'})`);
+            
+            // Select all files when resuming (user wants to download)
+            if (torrent.files) {
+                torrent.files.forEach((file) => {
+                    file.select();
+                });
+            }
+            
+            // Resume the torrent
             torrent.resume();
+            
             console.log(`✅ Successfully resumed torrent: ${infoHash}`);
             return true;
         }

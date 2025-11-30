@@ -34,14 +34,10 @@ function App() {
 
     // Listen for torrent progress updates
     const handleProgress = (data: TorrentData[]) => {
-      // Log paused states for debugging
-      console.log('📊 Progress update - Torrent paused states:', data.map(t => ({ infoHash: t.infoHash.substring(0, 8), paused: t.paused, name: t.name?.substring(0, 30) })));
       setTorrents(data);
     };
 
     const handleUpdate = (data: TorrentData[]) => {
-      // Log paused states for debugging
-      console.log('🔄 Update - Torrent paused states:', data.map(t => ({ infoHash: t.infoHash.substring(0, 8), paused: t.paused, name: t.name?.substring(0, 30) })));
       setTorrents(data);
     };
 
