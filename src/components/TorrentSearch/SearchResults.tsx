@@ -15,15 +15,17 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
+import CircularProgress from '@mui/material/CircularProgress';
 import type { SearchResult } from '@/services/searchClient';
 import { formatBytes } from '@/utils/formatUtils';
 
 interface SearchResultsProps {
     results: SearchResult[];
     onAdd: (magnetURI: string) => void;
+    addingMagnetURI?: string | null;
 }
 
-const SearchResults: React.FC<SearchResultsProps> = ({ results, onAdd }) => {
+const SearchResults: React.FC<SearchResultsProps> = ({ results, onAdd, addingMagnetURI }) => {
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);
         return date.toLocaleDateString(undefined, {
@@ -103,10 +105,17 @@ const SearchResults: React.FC<SearchResultsProps> = ({ results, onAdd }) => {
                                     <Button
                                         variant="contained"
                                         size="small"
-                                        startIcon={<AddIcon />}
+                                        startIcon={
+                                            addingMagnetURI === result.magnetURI ? (
+                                                <CircularProgress size={16} color="inherit" />
+                                            ) : (
+                                                <AddIcon />
+                                            )
+                                        }
                                         onClick={() => onAdd(result.magnetURI)}
+                                        disabled={addingMagnetURI === result.magnetURI || !!addingMagnetURI}
                                     >
-                                        Add
+                                        {addingMagnetURI === result.magnetURI ? 'Adding...' : 'Add'}
                                     </Button>
                                 </TableCell>
                             </TableRow>

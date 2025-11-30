@@ -29,6 +29,9 @@ export async function streamVideo(req, res, next) {
             });
         }
 
+        // Prioritize this file for streaming (selective downloading)
+        torrentManager.prioritizeFileForStreaming(infoHash, fileIdx);
+
         const fileSize = file.length;
         const mimeType = getMimeType(file.name);
 

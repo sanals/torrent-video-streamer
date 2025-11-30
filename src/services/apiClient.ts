@@ -147,6 +147,34 @@ export function getStreamUrl(infoHash: string, fileIndex: number): string {
 }
 
 /**
+ * Notify backend that video playback started (resume download if paused)
+ */
+export async function onVideoPlay(infoHash: string): Promise<void> {
+    try {
+        await fetch(`${API_BASE_URL}/torrents/${infoHash}/video/play`, {
+            method: 'POST',
+        });
+    } catch (error) {
+        // Silently fail - this is optional optimization
+        console.warn('Failed to notify video play event:', error);
+    }
+}
+
+/**
+ * Notify backend that video playback paused (pause download if enabled)
+ */
+export async function onVideoPause(infoHash: string): Promise<void> {
+    try {
+        await fetch(`${API_BASE_URL}/torrents/${infoHash}/video/pause`, {
+            method: 'POST',
+        });
+    } catch (error) {
+        // Silently fail - this is optional optimization
+        console.warn('Failed to notify video pause event:', error);
+    }
+}
+
+/**
  * Check backend health
  */
 export async function checkHealth(): Promise<boolean> {

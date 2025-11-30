@@ -180,3 +180,56 @@ export async function resumeTorrent(req, res, next) {
         next(error);
     }
 }
+
+/**
+ * Prioritize a file for streaming (selective downloading)
+ */
+export async function prioritizeFile(req, res, next) {
+    try {
+        const { infoHash, fileIndex } = req.params;
+        const fileIdx = parseInt(fileIndex, 10);
+        const success = torrentManager.prioritizeFileForStreaming(infoHash, fileIdx);
+
+        if (!success) {
+            return res.status(404).json({ success: false, error: 'Torrent or file not found' });
+        }
+
+        res.json({ success: true, message: 'File prioritized for streaming' });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * Handle video play event (resume download if pause-on-pause is enabled)
+ */
+export async function onVideoPlay(req, res, next) {
+    try {
+        const { infoHash } = req.params;
+        const success = torrentManager.resumeTorrentDownload(infoHash);
+
+        res.json({ 
+            success: true, 
+            message: success ? 'Torrent download resumed' : 'Torrent not found or already active' 
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * Handle video pause event (pause download if pause-on-pause is enabled)
+ */
+export async function onVideoPause(req, res, next) {
+    try {
+        const { infoHash } = req.params;
+        const success = torrentManager.pauseTorrentDownload(infoHash);
+
+        res.json({ 
+            success: true, 
+            message: success ? 'Torrent download paused' : 'Torrent not found or already paused' 
+        });
+    } catch (error) {
+        next(error);
+    }
+}

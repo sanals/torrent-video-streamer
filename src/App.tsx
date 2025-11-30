@@ -34,10 +34,14 @@ function App() {
 
     // Listen for torrent progress updates
     const handleProgress = (data: TorrentData[]) => {
+      // Log paused states for debugging
+      console.log('📊 Progress update - Torrent paused states:', data.map(t => ({ infoHash: t.infoHash.substring(0, 8), paused: t.paused, name: t.name?.substring(0, 30) })));
       setTorrents(data);
     };
 
     const handleUpdate = (data: TorrentData[]) => {
+      // Log paused states for debugging
+      console.log('🔄 Update - Torrent paused states:', data.map(t => ({ infoHash: t.infoHash.substring(0, 8), paused: t.paused, name: t.name?.substring(0, 30) })));
       setTorrents(data);
     };
 
@@ -126,7 +130,16 @@ function App() {
     }
   };
 
-  const handlePlayFile = (infoHash: string, fileIndex: number, fileName: string) => {
+  const handlePlayFile = async (infoHash: string, fileIndex: number, fileName: string) => {
+    // Find the torrent to check if it's paused
+    const torrent = torrents.find(t => t.infoHash === infoHash);
+    
+    // Don't allow playing if torrent is paused - user must start download first
+    if (torrent?.paused) {
+      setError('Please start downloading the torrent first before playing. Click the download button.');
+      return;
+    }
+    
     const streamUrl = apiClient.getStreamUrl(infoHash, fileIndex);
     setCurrentVideo({
       url: streamUrl,

@@ -48,6 +48,7 @@ const TorrentSearch: React.FC<TorrentSearchProps> = ({ onAddTorrent }) => {
     const [hasSearched, setHasSearched] = useState(false);
     const [searchMode, setSearchMode] = useState<SearchMode>('browser');
     const [searchSource, setSearchSource] = useState<SearchSource>('yts');
+    const [addingMagnetURI, setAddingMagnetURI] = useState<string | null>(null);
 
     const handleSearch = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -116,7 +117,13 @@ const TorrentSearch: React.FC<TorrentSearchProps> = ({ onAddTorrent }) => {
     };
 
     const handleAdd = (magnetURI: string) => {
+        setAddingMagnetURI(magnetURI);
+        // Call onAddTorrent (it handles async internally)
         onAddTorrent(magnetURI);
+        // Clear adding state after a delay to show feedback
+        setTimeout(() => {
+            setAddingMagnetURI(null);
+        }, 2000); // 2 seconds should be enough for most torrents to start adding
     };
 
     return (
@@ -276,7 +283,11 @@ const TorrentSearch: React.FC<TorrentSearchProps> = ({ onAddTorrent }) => {
             )}
 
             {hasSearched && !loading && results.length > 0 && (
-                <SearchResults results={results} onAdd={handleAdd} />
+                <SearchResults 
+                    results={results} 
+                    onAdd={handleAdd}
+                    addingMagnetURI={addingMagnetURI}
+                />
             )}
 
             {hasSearched && !loading && results.length === 0 && !error && (

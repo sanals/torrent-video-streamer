@@ -24,4 +24,13 @@ router.post('/torrents/:infoHash/pause', torrentController.pauseTorrent);
 // POST /api/torrents/:infoHash/resume - Resume torrent
 router.post('/torrents/:infoHash/resume', torrentController.resumeTorrent);
 
+// POST /api/torrents/:infoHash/files/:fileIndex/prioritize - Prioritize file for streaming
+router.post('/torrents/:infoHash/files/:fileIndex/prioritize', torrentController.prioritizeFile);
+
+// POST /api/torrents/:infoHash/video/play - Video play event (resume download)
+router.post('/torrents/:infoHash/video/play', torrentController.onVideoPlay);
+
+// POST /api/torrents/:infoHash/video/pause - Video pause event (pause download)
+router.post('/torrents/:infoHash/video/pause', torrentController.onVideoPause);
+
 export default router;

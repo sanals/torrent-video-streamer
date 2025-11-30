@@ -1,4 +1,5 @@
 import WebTorrent from 'webtorrent';
+import MemoryChunkStore from 'memory-chunk-store';
 
 class TorrentManager {
     static instance = null;
@@ -8,12 +9,19 @@ class TorrentManager {
             return TorrentManager.instance;
         }
 
+        // Check if we should use memory-only storage (default: true for streaming)
+        const useMemoryStorage = process.env.TORRENT_STORAGE_MODE !== 'disk';
+        const pauseOnVideoPause = process.env.TORRENT_PAUSE_ON_VIDEO_PAUSE !== 'false';
+
         this.client = new WebTorrent();
         this.torrents = new Map(); // key: magnetURI, value: torrent object
+        this.streamingFiles = new Map(); // key: `${infoHash}:${fileIndex}`, value: torrent
+        this.useMemoryStorage = useMemoryStorage;
+        this.pauseOnVideoPause = pauseOnVideoPause;
         TorrentManager.instance = this;
 
         // Log WebTorrent client initialization
-        console.log('✅ WebTorrent client initialized');
+        console.log(`✅ WebTorrent client initialized (Storage: ${useMemoryStorage ? 'Memory' : 'Disk'}, Pause on video pause: ${pauseOnVideoPause})`);
     }
 
     static getInstance() {
@@ -39,11 +47,42 @@ class TorrentManager {
 
             console.log('📥 Adding torrent:', magnetURI.substring(0, 60) + '...');
 
-            const torrent = this.client.add(magnetURI, (torrent) => {
+            // Use memory storage if enabled
+            // WebTorrent expects a constructor class, not a factory function
+            // MemoryChunkStore constructor takes chunkLength as first parameter
+            const options = this.useMemoryStorage ? {
+                store: MemoryChunkStore
+            } : {};
+
+            // Add torrent with callback (callback fires when metadata is ready)
+            // We need the callback for the torrent to appear in UI
+            const torrent = this.client.add(magnetURI, options, (torrent) => {
+                // Add to map first so it appears in UI
                 this.torrents.set(magnetURI, torrent);
-                console.log('✅ Torrent added:', torrent.name || torrent.infoHash);
-                resolve(this.serializeTorrent(torrent));
+                
+                // Then pause it (after a small delay to ensure it's in the map)
+                setTimeout(() => {
+                    torrent.pause();
+                    console.log(`⏸️  Torrent paused after being added: ${torrent.name || torrent.infoHash}`);
+                }, 100);
+                
+                console.log(`✅ Torrent added (will be paused): ${torrent.name || torrent.infoHash} (${this.useMemoryStorage ? 'Memory' : 'Disk'} storage)`);
+                
+                // Resolve with serialized torrent (it will show as paused in UI)
+                const serialized = this.serializeTorrent(torrent);
+                resolve(serialized);
             });
+            
+            // Set up event listeners to keep it paused if it tries to start
+            if (torrent) {
+                torrent.on('download', () => {
+                    // If download starts before callback fires, pause it
+                    if (!this.torrents.has(magnetURI)) {
+                        torrent.pause();
+                        console.log('⏸️  Paused torrent that started downloading before callback');
+                    }
+                });
+            }
 
             torrent.on('error', (err) => {
                 console.error('❌ Torrent error:', err.message);
@@ -62,12 +101,50 @@ class TorrentManager {
         return new Promise((resolve, reject) => {
             console.log('📥 Adding torrent from file...');
 
-            const torrent = this.client.add(torrentBuffer, (torrent) => {
+            // Use memory storage if enabled
+            // WebTorrent expects a constructor class, not a factory function
+            // MemoryChunkStore constructor takes chunkLength as first parameter
+            const options = this.useMemoryStorage ? {
+                store: MemoryChunkStore
+            } : {};
+
+            // Add torrent with callback (callback fires when metadata is ready)
+            // We need the callback for the torrent to appear in UI
+            const torrent = this.client.add(torrentBuffer, options, (torrent) => {
                 // Use magnetURI as key, or infoHash if magnetURI is not available
                 const key = torrent.magnetURI || torrent.infoHash;
+                
+                // Add to map first so it appears in UI
                 this.torrents.set(key, torrent);
-                console.log('✅ Torrent added from file:', torrent.name || torrent.infoHash);
-                resolve(this.serializeTorrent(torrent));
+                
+                // Then pause it (after a small delay to ensure it's in the map)
+                setTimeout(() => {
+                    torrent.pause();
+                    console.log(`⏸️  Torrent paused after being added from file: ${torrent.name || torrent.infoHash}`);
+                }, 100);
+                
+                console.log(`✅ Torrent added from file (will be paused): ${torrent.name || torrent.infoHash} (${this.useMemoryStorage ? 'Memory' : 'Disk'} storage)`);
+                
+                // Resolve with serialized torrent (it will show as paused in UI)
+                const serialized = this.serializeTorrent(torrent);
+                resolve(serialized);
+            });
+            
+            // Set up event listeners to keep it paused if it tries to start
+            if (torrent) {
+                torrent.on('download', () => {
+                    // If download starts before callback fires, pause it
+                    const key = torrent.magnetURI || torrent.infoHash;
+                    if (!this.torrents.has(key)) {
+                        torrent.pause();
+                        console.log('⏸️  Paused torrent from file that started downloading before callback');
+                    }
+                });
+            }
+
+            torrent.on('error', (err) => {
+                console.error('❌ Torrent error:', err.message);
+                reject(new Error(`Torrent error: ${err.message}`));
             });
 
             torrent.on('error', (err) => {
@@ -135,10 +212,12 @@ class TorrentManager {
     resumeTorrent(infoHash) {
         const torrent = this.getTorrentByInfoHash(infoHash);
         if (torrent) {
+            console.log(`▶️  Resuming torrent: ${infoHash} (${torrent.name || 'unnamed'})`);
             torrent.resume();
-            console.log('▶️  Resumed torrent:', infoHash);
+            console.log(`✅ Successfully resumed torrent: ${infoHash}`);
             return true;
         }
+        console.log(`❌ Torrent not found for resume: ${infoHash}`);
         return false;
     }
 
@@ -216,12 +295,97 @@ class TorrentManager {
     }
 
     /**
+     * Prioritize a file for streaming (selective downloading)
+     * Does NOT resume the torrent - it stays paused until user manually starts download
+     * @param {string} infoHash - Torrent info hash
+     * @param {number} fileIndex - File index to prioritize
+     */
+    prioritizeFileForStreaming(infoHash, fileIndex) {
+        const torrent = this.getTorrentByInfoHash(infoHash);
+        if (!torrent || !torrent.files[fileIndex]) {
+            return false;
+        }
+
+        const file = torrent.files[fileIndex];
+        const key = `${infoHash}:${fileIndex}`;
+
+        // Select this file (prioritize its pieces) - but DON'T resume torrent
+        // The torrent should remain paused until user clicks download button
+        file.select();
+        this.streamingFiles.set(key, torrent);
+
+        // Ensure torrent stays paused (file.select() doesn't resume, but be explicit)
+        if (!torrent.paused) {
+            console.log(`⚠️  Torrent was not paused when prioritizing file - this shouldn't happen`);
+        }
+
+        console.log(`🎯 Prioritizing file for streaming: ${file.name} (${infoHash}) - Torrent remains paused`);
+        return true;
+    }
+
+    /**
+     * Stop prioritizing a file
+     * @param {string} infoHash - Torrent info hash
+     * @param {number} fileIndex - File index to deprioritize
+     */
+    deprioritizeFile(infoHash, fileIndex) {
+        const torrent = this.getTorrentByInfoHash(infoHash);
+        if (!torrent || !torrent.files[fileIndex]) {
+            return false;
+        }
+
+        const file = torrent.files[fileIndex];
+        const key = `${infoHash}:${fileIndex}`;
+
+        // Deselect this file
+        file.deselect();
+        this.streamingFiles.delete(key);
+
+        console.log(`⏸️  Deprioritized file: ${file.name} (${infoHash})`);
+        return true;
+    }
+
+    /**
+     * Pause torrent download (for when video is paused)
+     * @param {string} infoHash - Torrent info hash
+     */
+    pauseTorrentDownload(infoHash) {
+        const torrent = this.getTorrentByInfoHash(infoHash);
+        if (torrent && !torrent.paused) {
+            torrent.pause();
+            console.log(`⏸️  Paused torrent download: ${infoHash}`);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Resume torrent download (for when video resumes)
+     * Only resumes if pause-on-video-pause is enabled
+     * @param {string} infoHash - Torrent info hash
+     */
+    resumeTorrentDownload(infoHash) {
+        // Only auto-resume if pause-on-video-pause feature is enabled
+        if (!this.pauseOnVideoPause) {
+            return false;
+        }
+        const torrent = this.getTorrentByInfoHash(infoHash);
+        if (torrent && torrent.paused) {
+            torrent.resume();
+            console.log(`▶️  Resumed torrent download (video play): ${infoHash}`);
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * Cleanup all torrents (for shutdown)
      */
     destroy() {
         console.log('🛑 Destroying all torrents...');
         this.client.destroy();
         this.torrents.clear();
+        this.streamingFiles.clear();
     }
 }
 

@@ -31,6 +31,7 @@ import SubtitlesIcon from '@mui/icons-material/Subtitles';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import type { TorrentData } from '@/services/apiClient';
 import { formatBytes } from '@/utils/formatUtils';
 import { categorizeFiles } from '@/utils/fileUtils';
@@ -124,17 +125,51 @@ const TorrentList: React.FC<TorrentListProps> = ({
                                 >
                                     {torrent.name || 'Loading metadata...'}
                                 </Typography>
-                                <Box>
-                                    <Tooltip title={torrent.paused ? "Resume Download" : "Pause Download"}>
-                                        <IconButton
-                                            color="primary"
-                                            onClick={() => torrent.paused ? onResumeTorrent(torrent.infoHash) : onPauseTorrent(torrent.infoHash)}
-                                            size="small"
-                                            sx={{ mr: 1 }}
-                                        >
-                                            {torrent.paused ? <PlayArrowIcon /> : <PauseIcon />}
-                                        </IconButton>
-                                    </Tooltip>
+                                <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                                    {torrent.paused && torrent.progress === 0 && (
+                                        <Tooltip title="Start Download">
+                                            <IconButton
+                                                color="primary"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    console.log('Starting download for torrent (header):', torrent.infoHash);
+                                                    onResumeTorrent(torrent.infoHash);
+                                                }}
+                                                size="small"
+                                            >
+                                                <CloudDownloadIcon />
+                                            </IconButton>
+                                        </Tooltip>
+                                    )}
+                                    {torrent.paused && torrent.progress > 0 && (
+                                        <Tooltip title="Resume Download">
+                                            <IconButton
+                                                color="primary"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    console.log('Resuming download for torrent (header):', torrent.infoHash);
+                                                    onResumeTorrent(torrent.infoHash);
+                                                }}
+                                                size="small"
+                                            >
+                                                <PlayArrowIcon />
+                                            </IconButton>
+                                        </Tooltip>
+                                    )}
+                                    {!torrent.paused && (
+                                        <Tooltip title="Pause Download">
+                                            <IconButton
+                                                color="primary"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onPauseTorrent(torrent.infoHash);
+                                                }}
+                                                size="small"
+                                            >
+                                                <PauseIcon />
+                                            </IconButton>
+                                        </Tooltip>
+                                    )}
                                     <Tooltip title="Remove Torrent">
                                         <IconButton
                                             color="error"
@@ -150,7 +185,7 @@ const TorrentList: React.FC<TorrentListProps> = ({
                             <Box sx={{ mb: 2 }}>
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                                     <Typography variant="body2" color="text.secondary">
-                                        {(torrent.progress * 100).toFixed(1)}% {torrent.paused && '(Paused)'}
+                                        {torrent.progress === 0 && torrent.paused ? 'Not Started' : `${(torrent.progress * 100).toFixed(1)}%`} {torrent.paused && torrent.progress > 0 && '(Paused)'}
                                     </Typography>
                                     <Typography variant="body2" color="text.secondary">
                                         {formatBytes(torrent.downloadSpeed)}/s ↓
@@ -241,14 +276,22 @@ const TorrentList: React.FC<TorrentListProps> = ({
                                                                 }}
                                                             />
                                                                 <ListItemSecondaryAction>
-                                                                    <IconButton
-                                                                        edge="end"
-                                                                        color="primary"
-                                                                        size="small"
-                                                                        onClick={() => onPlayFile(torrent.infoHash, file.index, file.name)}
-                                                                    >
-                                                                        <PlayArrowIcon />
-                                                                    </IconButton>
+                                                                    <Tooltip title={torrent.paused ? "Start downloading the torrent first (use the download button in the header)" : "Play Video"}>
+                                                                        <span>
+                                                                            <IconButton
+                                                                                edge="end"
+                                                                                color="primary"
+                                                                                size="small"
+                                                                                disabled={torrent.paused}
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    onPlayFile(torrent.infoHash, file.index, file.name);
+                                                                                }}
+                                                                            >
+                                                                                <PlayArrowIcon />
+                                                                            </IconButton>
+                                                                        </span>
+                                                                    </Tooltip>
                                                                 </ListItemSecondaryAction>
                                                             </ListItem>
                                                         ))}

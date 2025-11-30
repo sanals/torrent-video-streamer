@@ -5,7 +5,7 @@ import UploadFileIcon from '@mui/icons-material/UploadFile';
 import BufferOverlay from './BufferOverlay';
 import SubtitleControls from './SubtitleControls';
 import type { FileData } from '../../services/apiClient';
-import { getStreamUrl } from '../../services/apiClient';
+import { getStreamUrl, onVideoPlay, onVideoPause } from '../../services/apiClient';
 
 interface Subtitle {
   label: string;
@@ -127,29 +127,110 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   };
 
-  // Video event handlers for buffering
+  // Video event handlers for buffering - accurate detection
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    const handleWaiting = () => setIsBuffering(true);
-    const handleCanPlay = () => setIsBuffering(false);
-    const handleProgress = () => {
-      if (video.buffered.length > 0 && video.duration > 0) {
-        const bufferedEnd = video.buffered.end(video.buffered.length - 1);
-        const percent = (bufferedEnd / video.duration) * 100;
-        setBufferPercent(percent);
+    let bufferingTimeout: number | null = null;
+
+    const calculateBufferStatus = () => {
+      if (!video || video.duration === 0 || isNaN(video.duration)) {
+        setBufferPercent(0);
+        return;
       }
+
+      const currentTime = video.currentTime;
+      const duration = video.duration;
+      
+      // Find buffered range that contains current time
+      let bufferedAhead = 0;
+      let totalBuffered = 0;
+      
+      for (let i = 0; i < video.buffered.length; i++) {
+        const start = video.buffered.start(i);
+        const end = video.buffered.end(i);
+        
+        // Total buffered percentage
+        totalBuffered = Math.max(totalBuffered, (end / duration) * 100);
+        
+        // Buffer ahead of current playback position
+        if (currentTime >= start && currentTime < end) {
+          bufferedAhead = end - currentTime;
+        }
+      }
+
+      // Update buffer percentage (show total buffered)
+      setBufferPercent(totalBuffered);
+    };
+
+    const handleWaiting = () => {
+      // Video is waiting for data - show buffering
+      setIsBuffering(true);
+      calculateBufferStatus();
+    };
+
+    const handleCanPlay = () => {
+      // Enough data to play - clear buffering after a short delay
+      // This prevents flickering if canplay fires before waiting is cleared
+      if (bufferingTimeout) {
+        clearTimeout(bufferingTimeout);
+      }
+      bufferingTimeout = window.setTimeout(() => {
+        setIsBuffering(false);
+      }, 100);
+      calculateBufferStatus();
+    };
+
+    const handleCanPlayThrough = () => {
+      // Enough data to play through - definitely not buffering
+      if (bufferingTimeout) {
+        clearTimeout(bufferingTimeout);
+      }
+      setIsBuffering(false);
+      calculateBufferStatus();
+    };
+
+    const handleProgress = () => {
+      // Update buffer percentage as data loads
+      calculateBufferStatus();
+    };
+
+    const handlePlaying = () => {
+      // Video started playing - clear buffering
+      if (bufferingTimeout) {
+        clearTimeout(bufferingTimeout);
+      }
+      setIsBuffering(false);
+      calculateBufferStatus();
+    };
+
+    const handleStalled = () => {
+      // Network stalled - show buffering
+      setIsBuffering(true);
+      calculateBufferStatus();
     };
 
     video.addEventListener('waiting', handleWaiting);
+    video.addEventListener('stalled', handleStalled);
     video.addEventListener('canplay', handleCanPlay);
+    video.addEventListener('canplaythrough', handleCanPlayThrough);
     video.addEventListener('progress', handleProgress);
+    video.addEventListener('playing', handlePlaying);
+
+    // Initial check
+    calculateBufferStatus();
 
     return () => {
+      if (bufferingTimeout) {
+        clearTimeout(bufferingTimeout);
+      }
       video.removeEventListener('waiting', handleWaiting);
+      video.removeEventListener('stalled', handleStalled);
       video.removeEventListener('canplay', handleCanPlay);
+      video.removeEventListener('canplaythrough', handleCanPlayThrough);
       video.removeEventListener('progress', handleProgress);
+      video.removeEventListener('playing', handlePlaying);
     };
   }, []);
 
@@ -213,6 +294,18 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           controls
           autoPlay
           crossOrigin="anonymous"
+          onPlay={() => {
+            // Notify backend that video started playing (resume download if paused)
+            if (infoHash) {
+              onVideoPlay(infoHash);
+            }
+          }}
+          onPause={() => {
+            // Notify backend that video paused (pause download if enabled)
+            if (infoHash) {
+              onVideoPause(infoHash);
+            }
+          }}
           style={{
             position: 'absolute',
             top: 0,
