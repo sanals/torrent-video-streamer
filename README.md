@@ -22,6 +22,20 @@ A **client-server torrent streaming application** that allows you to stream vide
 - Node.js (v18 or higher)
 - npm or yarn
 
+## 🌐 Remote Deployment (Tailscale)
+
+**Want to run this on a server/laptop and access it remotely?**
+
+📖 **See [DEPLOYMENT.md](./DEPLOYMENT.md) for complete deployment guide**
+
+📖 **See [QUICK_START.md](./QUICK_START.md) for quick setup**
+
+Quick steps:
+1. Install Node.js and Tailscale
+2. Configure `.env.local` with your Tailscale IP
+3. Run `.\START_APP.ps1` (Windows) or start manually
+4. Access from any device via Tailscale: `http://YOUR_TAILSCALE_IP:3000`
+
 ## 🚀 Installation
 
 ### 1. Install Frontend Dependencies
