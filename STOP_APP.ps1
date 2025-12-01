@@ -11,11 +11,11 @@ function Stop-Port {
                  Select-Object -ExpandProperty OwningProcess -Unique
     
     if ($processes) {
-        foreach ($pid in $processes) {
-            $process = Get-Process -Id $pid -ErrorAction SilentlyContinue
+        foreach ($processId in $processes) {
+            $process = Get-Process -Id $processId -ErrorAction SilentlyContinue
             if ($process) {
-                Write-Host "   Stopping process $pid ($($process.ProcessName)) on port $Port..." -ForegroundColor Gray
-                Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
+                Write-Host "   Stopping process $processId ($($process.ProcessName)) on port $Port..." -ForegroundColor Gray
+                Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
             }
         }
         return $true
