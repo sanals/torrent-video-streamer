@@ -117,12 +117,21 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   };
 
 
-  // Video event handlers for buffering - accurate detection
+  // Video event handlers for buffering - with debouncing to prevent flickering
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    let bufferingTimeout: number | null = null;
+    // Debounce settings to prevent flickering on slow networks
+    const SHOW_DELAY = 800;      // Wait 800ms before showing buffering
+    const HIDE_DELAY = 500;      // Wait 500ms before hiding buffering
+    const MIN_SHOW_TIME = 1500;  // Keep buffering visible for at least 1.5s once shown
+
+    let showTimeout: number | null = null;
+    let hideTimeout: number | null = null;
+    let lastShownAt: number = 0;
+    let isWaiting = false;
+    let wasPlayingBeforeBuffering = false; // Track if video was playing before buffering
 
     const calculateBufferStatus = () => {
       if (!video || video.duration === 0 || isNaN(video.duration)) {
@@ -130,74 +139,138 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         return;
       }
 
-      const currentTime = video.currentTime;
       const duration = video.duration;
-      
-      // Find buffered range that contains current time
-      let bufferedAhead = 0;
       let totalBuffered = 0;
       
       for (let i = 0; i < video.buffered.length; i++) {
-        const start = video.buffered.start(i);
         const end = video.buffered.end(i);
-        
-        // Total buffered percentage
         totalBuffered = Math.max(totalBuffered, (end / duration) * 100);
-        
-        // Buffer ahead of current playback position
-        if (currentTime >= start && currentTime < end) {
-          bufferedAhead = end - currentTime;
-        }
       }
 
-      // Update buffer percentage (show total buffered)
       setBufferPercent(totalBuffered);
     };
 
-    const handleWaiting = () => {
-      // Video is waiting for data - show buffering
+    const showBuffering = () => {
+      // Clear any pending hide
+      if (hideTimeout) {
+        clearTimeout(hideTimeout);
+        hideTimeout = null;
+      }
+      
+      // Pause video if it's playing
+      if (!video.paused) {
+        wasPlayingBeforeBuffering = true;
+        video.pause();
+      } else {
+        wasPlayingBeforeBuffering = false;
+      }
+      
       setIsBuffering(true);
+      lastShownAt = Date.now();
+    };
+
+    const hideBuffering = () => {
+      // Clear any pending show
+      if (showTimeout) {
+        clearTimeout(showTimeout);
+        showTimeout = null;
+      }
+      
+      // Ensure minimum show time
+      const timeSinceShown = Date.now() - lastShownAt;
+      const remainingTime = Math.max(0, MIN_SHOW_TIME - timeSinceShown);
+      
+      if (remainingTime > 0) {
+        // Wait for minimum show time to complete
+        hideTimeout = window.setTimeout(() => {
+          if (!isWaiting) {
+            setIsBuffering(false);
+            // Resume video if it was playing before buffering
+            if (wasPlayingBeforeBuffering && video.paused) {
+              video.play().catch(err => {
+                console.warn('Failed to resume video after buffering:', err);
+              });
+            }
+          }
+          hideTimeout = null;
+        }, remainingTime);
+      } else {
+        setIsBuffering(false);
+        // Resume video if it was playing before buffering
+        if (wasPlayingBeforeBuffering && video.paused) {
+          video.play().catch(err => {
+            console.warn('Failed to resume video after buffering:', err);
+          });
+        }
+      }
+    };
+
+    const scheduleShowBuffering = () => {
+      isWaiting = true;
+      
+      // Clear any pending hide
+      if (hideTimeout) {
+        clearTimeout(hideTimeout);
+        hideTimeout = null;
+      }
+      
+      // Don't schedule if already showing or already scheduled
+      if (showTimeout) return;
+      
+      showTimeout = window.setTimeout(() => {
+        if (isWaiting) {
+          showBuffering();
+        }
+        showTimeout = null;
+      }, SHOW_DELAY);
+    };
+
+    const scheduleHideBuffering = () => {
+      isWaiting = false;
+      
+      // Clear any pending show
+      if (showTimeout) {
+        clearTimeout(showTimeout);
+        showTimeout = null;
+      }
+      
+      // Don't schedule if already hidden or already scheduled
+      if (hideTimeout) return;
+      
+      hideTimeout = window.setTimeout(() => {
+        if (!isWaiting) {
+          hideBuffering();
+        }
+        hideTimeout = null;
+      }, HIDE_DELAY);
+    };
+
+    const handleWaiting = () => {
+      scheduleShowBuffering();
       calculateBufferStatus();
     };
 
     const handleCanPlay = () => {
-      // Enough data to play - clear buffering after a short delay
-      // This prevents flickering if canplay fires before waiting is cleared
-      if (bufferingTimeout) {
-        clearTimeout(bufferingTimeout);
-      }
-      bufferingTimeout = window.setTimeout(() => {
-        setIsBuffering(false);
-      }, 100);
+      scheduleHideBuffering();
       calculateBufferStatus();
     };
 
     const handleCanPlayThrough = () => {
-      // Enough data to play through - definitely not buffering
-      if (bufferingTimeout) {
-        clearTimeout(bufferingTimeout);
-      }
-      setIsBuffering(false);
+      scheduleHideBuffering();
       calculateBufferStatus();
     };
 
     const handleProgress = () => {
-      // Update buffer percentage as data loads
       calculateBufferStatus();
     };
 
     const handlePlaying = () => {
-      // Video started playing - clear buffering
-      if (bufferingTimeout) {
-        clearTimeout(bufferingTimeout);
-      }
-      setIsBuffering(false);
+      scheduleHideBuffering();
       calculateBufferStatus();
     };
 
     const handleStalled = () => {
-      // Network stalled - show buffering
-      setIsBuffering(true);
+      scheduleShowBuffering();
       calculateBufferStatus();
     };
 
@@ -212,9 +285,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     calculateBufferStatus();
 
     return () => {
-      if (bufferingTimeout) {
-        clearTimeout(bufferingTimeout);
-      }
+      if (showTimeout) clearTimeout(showTimeout);
+      if (hideTimeout) clearTimeout(hideTimeout);
       video.removeEventListener('waiting', handleWaiting);
       video.removeEventListener('stalled', handleStalled);
       video.removeEventListener('canplay', handleCanPlay);
