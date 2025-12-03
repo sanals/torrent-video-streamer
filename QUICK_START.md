@@ -1,55 +1,44 @@
-# ⚡ Quick Start Guide
+# ⚡ Quick Start Guide - Frontend Client
 
 ## 🚀 Fast Setup (5 minutes)
 
-### 1. Install Prerequisites
+### 1. Prerequisites
 - **Node.js**: Download from [nodejs.org](https://nodejs.org/) (v18+)
-- **Tailscale**: Download from [tailscale.com/download](https://tailscale.com/download)
+- **Backend Server**: Make sure the backend server is running (see [backend repository](https://github.com/your-username/torrent-video-streamer-server))
 
 ### 2. Install Dependencies
 ```powershell
 npm install
-cd server
-npm install
-cd ..
 ```
 
 ### 3. Configure Environment
 
-**Create `server/.env`:**
+**Create `.env.local` (replace with YOUR backend URL):**
 ```env
-PORT=4000
-NODE_ENV=production
-CORS_ORIGIN=*
-USE_MEMORY_STORAGE=true
-AUTO_DELETE_ON_DISCONNECT=true
+VITE_API_URL=http://localhost:4000/api
+VITE_WS_URL=ws://localhost:4000
 ```
 
-**Create `.env.local` (replace with YOUR Tailscale IP):**
+**For remote backend (Tailscale):**
 ```env
-VITE_API_URL=http://100.106.121.5:4000/api
-VITE_WS_URL=ws://100.106.121.5:4000
+VITE_API_URL=http://YOUR_TAILSCALE_IP:4000/api
+VITE_WS_URL=ws://YOUR_TAILSCALE_IP:4000
 ```
 
-**Find your Tailscale IP:**
+**Find your Tailscale IP (if using Tailscale):**
 ```powershell
 tailscale ip
 ```
 
-### 4. Start the App
+### 4. Start the Frontend
 
-**Option A: Use the startup script (Easiest)**
+**Option A: Use the startup script**
 ```powershell
 .\START_APP.ps1
 ```
 
-**Option B: Manual start (Two terminals)**
+**Option B: Manual start**
 ```powershell
-# Terminal 1
-cd server
-npm start
-
-# Terminal 2 (new terminal)
 npm run dev
 ```
 
@@ -58,13 +47,13 @@ npm run dev
 - **Local**: http://localhost:3000
 - **Remote (via Tailscale)**: http://YOUR_TAILSCALE_IP:3000
 
-### 6. Stop the App
+### 6. Stop the Frontend
 
 ```powershell
 .\STOP_APP.ps1
 ```
 
-Or press `Ctrl+C` in both terminals.
+Or press `Ctrl+C` in the terminal.
 
 ---
 
@@ -78,10 +67,10 @@ Or press `Ctrl+C` in both terminals.
 
 ## 🔧 Troubleshooting
 
-**Port in use?**
-```powershell
-.\stop-port-4000.ps1
-```
+**Can't connect to backend?**
+- Verify backend server is running on port 4000
+- Check `.env.local` has correct backend URL
+- Ensure backend CORS allows your frontend origin
 
 **Can't access from phone?**
 - Check both devices are connected to Tailscale
@@ -90,5 +79,5 @@ Or press `Ctrl+C` in both terminals.
 
 ---
 
-**Full details**: See `DEPLOYMENT.md`
+**Full details**: See `DEPLOYMENT.md` or the backend repository
 

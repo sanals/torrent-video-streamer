@@ -1,7 +1,7 @@
-# PowerShell script to stop the Torrent Video Streamer Frontend
-# This script stops all Node.js processes running on port 3000
+# PowerShell script to stop the Torrent Video Streamer Backend Server
+# This script stops all Node.js processes running on port 4000
 
-Write-Host "🛑 Stopping Torrent Video Streamer Frontend..." -ForegroundColor Yellow
+Write-Host "🛑 Stopping Torrent Video Streamer Backend..." -ForegroundColor Yellow
 
 # Function to stop processes on a specific port
 function Stop-Port {
@@ -23,18 +23,18 @@ function Stop-Port {
     return $false
 }
 
-# Stop port 3000 (frontend)
-Write-Host "🎨 Stopping frontend (port 3000)..." -ForegroundColor Cyan
-$frontendStopped = Stop-Port -Port 3000
-if ($frontendStopped) {
-    Write-Host "   ✅ Frontend stopped" -ForegroundColor Green
+# Stop port 4000 (backend)
+Write-Host "🔧 Stopping backend (port 4000)..." -ForegroundColor Cyan
+$backendStopped = Stop-Port -Port 4000
+if ($backendStopped) {
+    Write-Host "   ✅ Backend stopped" -ForegroundColor Green
 } else {
-    Write-Host "   ℹ️  No process found on port 3000" -ForegroundColor Gray
+    Write-Host "   ℹ️  No process found on port 4000" -ForegroundColor Gray
 }
 
 Write-Host ""
-if ($frontendStopped) {
-    Write-Host "✅ Frontend stopped successfully!" -ForegroundColor Green
+if ($backendStopped) {
+    Write-Host "✅ Server stopped successfully!" -ForegroundColor Green
 } else {
     Write-Host "ℹ️  No running instances found" -ForegroundColor Gray
 }

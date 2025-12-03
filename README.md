@@ -1,12 +1,12 @@
-# Torrent Video Streamer
+# Torrent Video Streamer - Frontend Client
 
-A **client-server torrent streaming application** that allows you to stream videos directly from torrents with seeking support. Built with React frontend and Node.js backend running WebTorrent.
+A **React frontend client** for streaming videos directly from torrents. Connects to a backend server that handles WebTorrent downloads and video streaming.
 
 ## 🏗️ Architecture
 
-- **Backend (Node.js + Express)**: Runs WebTorrent server-side, handles torrent downloads, streams videos via HTTP
 - **Frontend (React + TypeScript)**: Modern UI for managing torrents and playing videos
-- **WebSocket**: Real-time progress updates
+- **Backend Server**: Separate Node.js server (see [server repository](https://github.com/your-username/torrent-video-streamer-server))
+- **WebSocket**: Real-time progress updates from backend
 
 ## ✨ Features
 
@@ -38,30 +38,17 @@ Quick steps:
 
 ## 🚀 Installation
 
-### 1. Install Frontend Dependencies
+### Install Dependencies
 ```bash
 npm install
-```
-
-### 2. Install Backend Dependencies
-```bash
-cd server
-npm install
-cd ..
 ```
 
 ## 🎬 Running the Application
 
-You need **TWO terminals** running simultaneously:
+### Prerequisites
+Make sure the backend server is running. See the [backend repository](https://github.com/your-username/torrent-video-streamer-server) for setup instructions.
 
-### Terminal 1: Backend Server
-```bash
-cd server
-npm run dev
-```
-The backend will start on **http://localhost:4000**
-
-### Terminal 2: Frontend
+### Start Frontend
 ```bash
 npm run dev
 ```
@@ -86,15 +73,6 @@ magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c&dn=Big+Buck+Bunny&t
 
 ## 🔧 Configuration
 
-### Backend (.env)
-Create `server/.env` (or copy from `server/.env.example`):
-```env
-PORT=4000
-NODE_ENV=development
-DOWNLOADS_PATH=./downloads
-CORS_ORIGIN=http://localhost:3000
-```
-
 ### Frontend (.env.local)
 Create `.env.local` (or copy from `.env.example`):
 ```env
@@ -102,89 +80,64 @@ VITE_API_URL=http://localhost:4000/api
 VITE_WS_URL=ws://localhost:4000
 ```
 
-## 📡 API Endpoints
+**For remote backend (Tailscale):**
+```env
+VITE_API_URL=http://YOUR_TAILSCALE_IP:4000/api
+VITE_WS_URL=ws://YOUR_TAILSCALE_IP:4000
+```
 
-### Torrent Management
-- `POST /api/torrents` - Add a torrent
-- `GET /api/torrents` - Get all torrents
-- `GET /api/torrents/:infoHash` - Get specific torrent
-- `DELETE /api/torrents/:infoHash` - Remove a torrent
-- `GET /api/torrents/:infoHash/progress` - Get progress
+## 📡 Backend API
 
-### Video Streaming
-- `GET /api/stream/:infoHash/:fileIndex` - Stream video with range support
+This frontend connects to a backend server that provides:
+- Torrent management endpoints
+- Video streaming with range support
+- WebSocket real-time updates
+- Torrent search functionality
 
-### Utility
-- `GET /api/health` - Health check
-- `GET /` - API information
-
-## 🌐 WebSocket Events
-
-- `torrent:progress` - Real-time progress updates (1-second interval)
-- `torrent:update` - Initial torrent list
+See the [backend repository](https://github.com/your-username/torrent-video-streamer-server) for API documentation.
 
 ## 📁 Project Structure
 
 ```
-torrent-video-streamer/
-├── src/                          # Frontend (React)
+torrent-video-streamer-frontend/
+├── src/
 │   ├── components/
 │   │   ├── VideoPlayer/         # Video player component
-│   │   └── TorrentManager/      # Torrent UI components
+│   │   ├── TorrentManager/      # Torrent UI components
+│   │   └── TorrentSearch/       # Search UI
 │   ├── services/
 │   │   ├── apiClient.ts         # HTTP API client
-│   │   └── websocketClient.ts   # WebSocket client
-│   └── App.tsx                  # Main application
-│
-├── server/                       # Backend (Node.js)
-│   ├── src/
-│   │   ├── config/              # Configuration
-│   │   ├── controllers/         # Route handlers
-│   │   ├── middleware/          # Express middleware
-│   │   ├── routes/              # API routes
-│   │   ├── torrent/             # TorrentManager
-│   │   ├── utils/               # Utilities
-│   │   ├── websocket/           # WebSocket server
-│   │   └── server.js            # Entry point
-│   └── package.json
-│
-└── package.json                 # Frontend dependencies
+│   │   ├── websocketClient.ts   # WebSocket client
+│   │   └── searchService.ts     # Search functionality
+│   ├── hooks/                   # Custom React hooks
+│   ├── contexts/                # React contexts
+│   ├── types/                   # TypeScript types
+│   └── App.tsx                   # Main application
+├── public/                       # Static assets
+├── index.html                    # Entry HTML
+└── package.json                  # Dependencies
 ```
 
 ## 🛠️ Tech Stack
 
-### Frontend
-- React 18
-- TypeScript
-- Material-UI (MUI)
-- Vite
-
-### Backend
-- Node.js
-- Express
-- WebTorrent
-- WebSocket (ws)
+- **React 18** - UI framework
+- **TypeScript** - Type safety
+- **Material-UI (MUI)** - Component library
+- **Vite** - Build tool and dev server
+- **Video.js** - Video player
+- **Axios** - HTTP client
 
 ## ⚠️ Known Limitations
 
-- **Browser-only WebTorrent doesn't work** - That's why we built this with a backend
+- **Requires backend server** - This is a frontend-only client
 - **Some torrents may be slow** - Depends on seeders/peers availability
 - **Large files take time** - Full download needed before seeking works smoothly
-- **No built-in search** - Must provide magnet links manually
 
 ## 🚧 Development
 
 ### Build for Production
-
-Frontend:
 ```bash
 npm run build
-```
-
-Backend:
-```bash
-cd server
-npm start
 ```
 
 ### Linting
@@ -192,17 +145,16 @@ npm start
 npm run lint
 ```
 
+### Preview Production Build
+```bash
+npm run preview
+```
+
 ## 📝 Environment Variables
 
-### Backend
-- `PORT` - Server port (default: 4000)
-- `NODE_ENV` - Environment (development/production)
-- `DOWNLOADS_PATH` - Where to store downloads
-- `CORS_ORIGIN` - Allowed frontend origin
-
 ### Frontend
-- `VITE_API_URL` - Backend API URL
-- `VITE_WS_URL` - WebSocket URL
+- `VITE_API_URL` - Backend API URL (default: http://localhost:4000/api)
+- `VITE_WS_URL` - WebSocket URL (default: ws://localhost:4000)
 
 ## 🤝 Contributing
 
@@ -223,27 +175,19 @@ MIT
 
 ## 🐛 Troubleshooting
 
-### Port Already in Use
-If you see `EADDRINUSE` error:
-```bash
-# Windows
-netstat -ano | findstr :4000
-taskkill /PID <PID> /F
-
-# Linux/Mac
-lsof -ti:4000 | xargs kill -9
-```
-
 ### Frontend Can't Connect to Backend
-- Ensure backend is running on port 4000
-- Check CORS settings in `server/.env`
-- Verify `VITE_API_URL` in `.env.local`
+- Ensure backend server is running
+- Verify `VITE_API_URL` in `.env.local` points to correct backend URL
+- Check backend CORS settings allow your frontend origin
+- Check browser console for connection errors
 
 ### Video Won't Play
 - Wait for torrent to fetch metadata
 - Ensure file is a supported video format
 - Check browser console for errors
+- Verify backend is streaming the file correctly
 
 ---
 
 **Happy Streaming! 🎬**
+
