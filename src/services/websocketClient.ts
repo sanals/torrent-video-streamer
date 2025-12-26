@@ -3,15 +3,25 @@
  */
 import { WS_URL } from '@/config';
 
+export type WebSocketStatus = 'connecting' | 'open' | 'reconnecting' | 'closed' | 'failed';
+
 type MessageHandler = (data: any) => void;
+type StatusHandler = (status: WebSocketStatus) => void;
 
 class WebSocketClient {
     private ws: WebSocket | null = null;
     private handlers: Map<string, MessageHandler[]> = new Map();
+    private statusHandlers: Set<StatusHandler> = new Set();
     private reconnectAttempts = 0;
     private maxReconnectAttempts = 5;
     private reconnectDelay = 2000;
     private isIntentionallyClosed = false;
+    private status: WebSocketStatus = 'closed';
+
+    private setStatus(status: WebSocketStatus) {
+        this.status = status;
+        this.statusHandlers.forEach((handler) => handler(status));
+    }
 
     /**
      * Connect to WebSocket server
@@ -23,6 +33,7 @@ class WebSocketClient {
         }
 
         this.isIntentionallyClosed = false;
+        this.setStatus(this.reconnectAttempts > 0 ? 'reconnecting' : 'connecting');
         console.log('🔌 Connecting to WebSocket:', WS_URL);
 
         try {
@@ -31,6 +42,7 @@ class WebSocketClient {
             this.ws.onopen = () => {
                 console.log('✅ WebSocket connected');
                 this.reconnectAttempts = 0;
+                this.setStatus('open');
             };
 
             this.ws.onmessage = (event) => {
@@ -53,12 +65,16 @@ class WebSocketClient {
                 // Auto-reconnect if not intentionally closed
                 if (!this.isIntentionallyClosed && this.reconnectAttempts < this.maxReconnectAttempts) {
                     this.reconnectAttempts++;
+                    this.setStatus('reconnecting');
                     console.log(`Reconnecting... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
                     setTimeout(() => this.connect(), this.reconnectDelay);
+                } else {
+                    this.setStatus(this.isIntentionallyClosed ? 'closed' : 'failed');
                 }
             };
         } catch (error) {
             console.error('❌ Failed to create WebSocket:', error);
+            this.setStatus('failed');
         }
     }
 
@@ -71,6 +87,7 @@ class WebSocketClient {
             this.ws.close();
             this.ws = null;
         }
+        this.setStatus('closed');
     }
 
     /**
@@ -94,6 +111,27 @@ class WebSocketClient {
                 handlers.splice(index, 1);
             }
         }
+    }
+
+    /**
+     * Subscribe to status changes
+     */
+    onStatusChange(handler: StatusHandler): void {
+        this.statusHandlers.add(handler);
+    }
+
+    /**
+     * Unsubscribe from status changes
+     */
+    offStatusChange(handler: StatusHandler): void {
+        this.statusHandlers.delete(handler);
+    }
+
+    /**
+     * Get current status
+     */
+    getStatus(): WebSocketStatus {
+        return this.status;
     }
 
     /**
