@@ -13,19 +13,13 @@ import {
     Typography,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
-import CloudIcon from '@mui/icons-material/Cloud';
-import ComputerIcon from '@mui/icons-material/Computer';
 import type { SearchResult } from '@/services/searchClient';
-import type { BrowserSearchResult } from '@/services/browserSearchClient';
 import * as searchClient from '@/services/searchClient';
-import * as browserSearchClient from '@/services/browserSearchClient';
 import SearchResults from './SearchResults';
 
 interface TorrentSearchProps {
     onAddTorrent: (magnetURI: string) => void;
 }
-
-type SearchMode = 'backend' | 'browser';
 
 const categories = [
     { value: '', label: 'All Categories' },
@@ -46,7 +40,6 @@ const TorrentSearch: React.FC<TorrentSearchProps> = ({ onAddTorrent }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [hasSearched, setHasSearched] = useState(false);
-    const [searchMode, setSearchMode] = useState<SearchMode>('browser');
     const [searchSource, setSearchSource] = useState<SearchSource>('yts');
     const [addingMagnetURI, setAddingMagnetURI] = useState<string | null>(null);
 
@@ -63,32 +56,12 @@ const TorrentSearch: React.FC<TorrentSearchProps> = ({ onAddTorrent }) => {
         setHasSearched(true);
 
         try {
-            let searchResults: SearchResult[];
-
-            if (searchMode === 'browser') {
-                // Browser-based search (direct to YTS API)
-                const browserResults = await browserSearchClient.searchTorrentsBrowser(query, {
-                    limit: 200, // Request more results
-                });
-                // Convert BrowserSearchResult to SearchResult
-                searchResults = browserResults.map((result: BrowserSearchResult): SearchResult => ({
-                    name: result.name,
-                    magnetURI: result.magnetURI,
-                    size: result.size,
-                    seeders: result.seeders,
-                    leechers: result.leechers,
-                    category: result.category,
-                    uploadDate: result.uploadDate,
-                    source: result.source || 'YTS',
-                }));
-            } else {
-                // Backend API search - request more results
-                searchResults = await searchClient.searchTorrents(query, {
-                    category: category || undefined,
-                    limit: 200, // Request up to 200 results
-                    source: searchSource, // Pass the selected source
-                });
-            }
+            // Backend API search - request more results
+            const searchResults = await searchClient.searchTorrents(query, {
+                category: category || undefined,
+                limit: 200, // Request up to 200 results
+                source: searchSource, // Pass the selected source
+            });
 
             setResults(searchResults);
 
@@ -129,36 +102,8 @@ const TorrentSearch: React.FC<TorrentSearchProps> = ({ onAddTorrent }) => {
     return (
         <Box sx={{ mb: 4 }}>
             <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
-                {/* Search Mode Toggle */}
-                <Box sx={{ mb: 2, display: 'flex', justifyContent: 'center' }}>
-                    <ToggleButtonGroup
-                        value={searchMode}
-                        exclusive
-                        onChange={(_, newMode) => newMode && setSearchMode(newMode)}
-                        size="small"
-                    >
-                        <ToggleButton value="browser">
-                            <Tooltip title="Search directly from browser (bypasses network restrictions)">
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                    <ComputerIcon fontSize="small" />
-                                    Browser Direct
-                                </Box>
-                            </Tooltip>
-                        </ToggleButton>
-                        <ToggleButton value="backend">
-                            <Tooltip title="Search via backend server (may be blocked)">
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                    <CloudIcon fontSize="small" />
-                                    Backend API
-                                </Box>
-                            </Tooltip>
-                        </ToggleButton>
-                    </ToggleButtonGroup>
-                </Box>
-
-                {/* Source Selector (only for backend mode) */}
-                {searchMode === 'backend' && (
-                    <Paper 
+                {/* Source Selector */}
+                <Paper 
                         elevation={1} 
                         sx={{ 
                             mb: 2, 
@@ -299,7 +244,6 @@ const TorrentSearch: React.FC<TorrentSearchProps> = ({ onAddTorrent }) => {
                             </Box>
                         </Box>
                     </Paper>
-                )}
 
                 <Box 
                     component="form" 
@@ -326,25 +270,23 @@ const TorrentSearch: React.FC<TorrentSearchProps> = ({ onAddTorrent }) => {
                             }
                         }}
                     />
-                    {searchMode === 'backend' && (
-                        <TextField
-                            select
-                            label="Category"
-                            value={category}
-                            onChange={(e) => setCategory(e.target.value)}
-                            disabled={loading}
-                            sx={{ 
-                                minWidth: { xs: 120, sm: 150 },
-                                display: { xs: 'none', sm: 'flex' }
-                            }}
-                        >
-                            {categories.map((option) => (
-                                <MenuItem key={option.value} value={option.value}>
-                                    {option.label}
-                                </MenuItem>
-                            ))}
-                        </TextField>
-                    )}
+                    <TextField
+                        select
+                        label="Category"
+                        value={category}
+                        onChange={(e) => setCategory(e.target.value)}
+                        disabled={loading}
+                        sx={{ 
+                            minWidth: { xs: 120, sm: 150 },
+                            display: { xs: 'none', sm: 'flex' }
+                        }}
+                    >
+                        {categories.map((option) => (
+                            <MenuItem key={option.value} value={option.value}>
+                                {option.label}
+                            </MenuItem>
+                        ))}
+                    </TextField>
                     <Button
                         type="submit"
                         variant="contained"
@@ -367,24 +309,8 @@ const TorrentSearch: React.FC<TorrentSearchProps> = ({ onAddTorrent }) => {
                 <Alert 
                     severity={results.length === 0 ? 'warning' : 'error'} 
                     sx={{ mb: 2 }}
-                    action={
-                        searchMode === 'browser' && error.includes('Browser search failed') ? (
-                            <Button 
-                                color="inherit" 
-                                size="small" 
-                                onClick={() => setSearchMode('backend')}
-                            >
-                                Switch to Backend
-                            </Button>
-                        ) : null
-                    }
                 >
                     {error}
-                    {searchMode === 'browser' && error.includes('Browser search failed') && (
-                        <Box sx={{ mt: 1, fontSize: '0.875rem' }}>
-                            <strong>Tip:</strong> Switch to "Backend API" mode above for more reliable searches.
-                        </Box>
-                    )}
                 </Alert>
             )}
 
