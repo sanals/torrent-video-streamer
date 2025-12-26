@@ -148,8 +148,32 @@ export function getStreamUrl(infoHash: string, fileIndex: number): string {
 /**
  * Get transcoded stream URL (audio converted to AAC, no seeking)
  */
-export function getTranscodedStreamUrl(infoHash: string, fileIndex: number): string {
-    return `${API_BASE_URL.replace('/api', '')}/api/stream-transcoded/${infoHash}/${fileIndex}`;
+export function getTranscodedStreamUrl(infoHash: string, fileIndex: number, audioTrackIndex: number = 0): string {
+    return `${API_BASE_URL.replace('/api', '')}/api/stream-transcoded/${infoHash}/${fileIndex}?audioTrack=${audioTrackIndex}`;
+}
+
+export interface AudioTrack {
+    index: number;
+    codec: string;
+    channels: number;
+    language: string;
+    title?: string;
+}
+
+export interface StreamInfo {
+    success: boolean;
+    audioTracks: AudioTrack[];
+}
+
+/**
+ * Get stream info (audio tracks)
+ */
+export async function getStreamInfo(infoHash: string, fileIndex: number): Promise<StreamInfo> {
+    const response = await fetch(`${API_BASE_URL.replace('/api', '')}/api/stream/${infoHash}/${fileIndex}/info`);
+    if (!response.ok) {
+        throw new Error('Failed to fetch stream info');
+    }
+    return response.json();
 }
 
 /**

@@ -1,13 +1,13 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Paper, Box, Typography, IconButton, Button, Alert, Tooltip } from '@mui/material';
+import { Paper, Box, Typography, IconButton, Button, Alert, Tooltip, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import UndoIcon from '@mui/icons-material/Undo';
 import LinkIcon from '@mui/icons-material/Link';
 import BufferOverlay from './BufferOverlay';
 import SubtitleControls from './SubtitleControls';
-import type { FileData } from '../../services/apiClient';
-import { getStreamUrl, getTranscodedStreamUrl, onVideoPlay, onVideoPause } from '../../services/apiClient';
+import type { FileData, AudioTrack } from '../../services/apiClient';
+import { getStreamUrl, getTranscodedStreamUrl, onVideoPlay, onVideoPause, getStreamInfo } from '../../services/apiClient';
 
 interface Subtitle {
   label: string;
@@ -40,18 +40,41 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [bufferPercent, setBufferPercent] = useState(0);
   const [isTranscoded, setIsTranscoded] = useState(false);
   const [effectiveSrc, setEffectiveSrc] = useState(src);
+  const [audioTracks, setAudioTracks] = useState<AudioTrack[]>([]);
+  const [selectedAudioTrack, setSelectedAudioTrack] = useState<number>(0);
+  const [loadingAudioTracks, setLoadingAudioTracks] = useState(false);
 
   // Reset state when src changes
   useEffect(() => {
     setIsTranscoded(false);
     setEffectiveSrc(src);
+    setAudioTracks([]);
+    setSelectedAudioTrack(0);
   }, [src]);
+
+  // Fetch audio tracks info
+  useEffect(() => {
+    if (infoHash && typeof fileIndex === 'number') {
+      setLoadingAudioTracks(true);
+      getStreamInfo(infoHash, fileIndex)
+        .then(info => {
+          setAudioTracks(info.audioTracks || []);
+        })
+        .catch(err => {
+          console.warn('Failed to fetch audio tracks:', err);
+        })
+        .finally(() => {
+          setLoadingAudioTracks(false);
+        });
+    }
+  }, [infoHash, fileIndex]);
 
   // Handle Fix Audio button click
   const handleFixAudio = () => {
     if (!infoHash || typeof fileIndex !== 'number') return;
 
-    const transcodedUrl = getTranscodedStreamUrl(infoHash, fileIndex);
+    // Pass the selected audio track index
+    const transcodedUrl = getTranscodedStreamUrl(infoHash, fileIndex, selectedAudioTrack);
     setIsTranscoded(true);
     setEffectiveSrc(transcodedUrl);
 
@@ -446,16 +469,36 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           }}
         >
           {!isTranscoded && (
-            <Tooltip title="Fixes audio but disables seeking">
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<VolumeUpIcon />}
-                onClick={handleFixAudio}
-              >
-                Fix Audio
-              </Button>
-            </Tooltip>
+            <>
+              {audioTracks.length > 1 && (
+                <FormControl size="small" sx={{ minWidth: 120 }}>
+                  <InputLabel>Audio Track</InputLabel>
+                  <Select
+                    value={selectedAudioTrack}
+                    label="Audio Track"
+                    onChange={(e) => setSelectedAudioTrack(Number(e.target.value))}
+                    disabled={loadingAudioTracks}
+                  >
+                    {audioTracks.map((track) => (
+                      <MenuItem key={track.index} value={track.index}>
+                        {track.language || 'Unknown'} ({track.channels}ch)
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+
+              <Tooltip title="Fixes audio but disables seeking">
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<VolumeUpIcon />}
+                  onClick={handleFixAudio}
+                >
+                  Fix Audio
+                </Button>
+              </Tooltip>
+            </>
           )}
           {isTranscoded && (
             <>
