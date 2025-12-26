@@ -1,8 +1,7 @@
 /**
  * WebSocket Client for Real-time Updates
  */
-
-const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:4000';
+import { WS_URL } from '@/config';
 
 type MessageHandler = (data: any) => void;
 
