@@ -1,5 +1,5 @@
 // Torrent search service for Torrent Video Streamer
-import type { SearchResult } from '@/types/torrent';
+import type { SearchResult } from '@/types/search';
 import type { SearchApiResponse } from '@/types/api';
 import { TORRENT_CATEGORIES } from '@/utils/constants';
 

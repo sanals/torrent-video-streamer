@@ -51,21 +51,3 @@ export interface VideoFile extends TorrentFile {
   /** Video file extension (e.g., mp4, mkv) */
   extension: string;
 }
-
-/**
- * Represents a single search result from a torrent search API.
- */
-export interface SearchResult {
-  /** Torrent title */
-  title: string;
-  /** Magnet URI */
-  magnetURI: string;
-  /** File size in bytes */
-  size: number;
-  /** Number of seeders */
-  seeds: number;
-  /** Number of leechers */
-  leeches: number;
-  /** Optional: Source site */
-  source?: string;
-} 

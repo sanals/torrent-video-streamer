@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { searchTorrents, validateSearchQuery, validateCategory } from '@/services/searchService';
-import type { SearchResult } from '@/types/torrent';
+import type { SearchResult } from '@/types/search';
 
 /**
  * Custom hook for torrent search functionality.
