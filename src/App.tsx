@@ -35,9 +35,9 @@ function App() {
   useEffect(() => {
     if (currentVideo && videoPlayerRef.current) {
       setTimeout(() => {
-        videoPlayerRef.current?.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'start' 
+        videoPlayerRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
         });
       }, 100);
     }
@@ -73,28 +73,28 @@ function App() {
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
-      <Container 
-        maxWidth="lg" 
-        sx={{ 
+      <Container
+        maxWidth="lg"
+        sx={{
           py: { xs: 2, sm: 4 },
           px: { xs: 1, sm: 3 }
         }}
       >
         <Box sx={{ mb: { xs: 2, sm: 4 }, textAlign: 'center' }}>
           <Stack spacing={1} alignItems="center">
-            <Typography 
-              variant="h3" 
-              component="h1" 
+            <Typography
+              variant="h3"
+              component="h1"
               gutterBottom
-              sx={{ 
+              sx={{
                 fontSize: { xs: '1.75rem', sm: '2.5rem', md: '3rem' },
                 fontWeight: 600
               }}
             >
               🎬 Torrent Video Streamer
             </Typography>
-            <Typography 
-              variant="subtitle1" 
+            <Typography
+              variant="subtitle1"
               color="text.secondary"
               sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
             >
@@ -134,6 +134,7 @@ function App() {
               infoHash={currentVideo.infoHash}
               fileIndex={currentVideo.fileIndex}
               files={torrents.find(t => t.infoHash === currentVideo.infoHash)?.files || []}
+              magnetURI={torrents.find(t => t.infoHash === currentVideo.infoHash)?.magnetURI}
             />
           )}
         </Box>
@@ -143,16 +144,16 @@ function App() {
         <Divider sx={{ my: 4 }} />
 
         <Box ref={torrentManagerRef}>
-        <TorrentManager
-          torrents={torrents}
-          onAddTorrent={handleAddTorrent}
-          onRemoveTorrent={handleRemoveTorrent}
-          onPlayFile={handlePlayFile}
-          onPauseTorrent={handlePauseTorrent}
-          onResumeTorrent={handleResumeTorrent}
-          isAdding={isAdding}
-          currentVideo={currentVideo}
-        />
+          <TorrentManager
+            torrents={torrents}
+            onAddTorrent={handleAddTorrent}
+            onRemoveTorrent={handleRemoveTorrent}
+            onPlayFile={handlePlayFile}
+            onPauseTorrent={handlePauseTorrent}
+            onResumeTorrent={handleResumeTorrent}
+            isAdding={isAdding}
+            currentVideo={currentVideo}
+          />
         </Box>
 
         <Snackbar open={!!error} autoHideDuration={6000} onClose={clearError}>

@@ -146,6 +146,13 @@ export function getStreamUrl(infoHash: string, fileIndex: number): string {
 }
 
 /**
+ * Get transcoded stream URL (audio converted to AAC, no seeking)
+ */
+export function getTranscodedStreamUrl(infoHash: string, fileIndex: number): string {
+    return `${API_BASE_URL.replace('/api', '')}/api/stream-transcoded/${infoHash}/${fileIndex}`;
+}
+
+/**
  * Notify backend that video playback started (resume download if paused)
  */
 export async function onVideoPlay(infoHash: string): Promise<void> {

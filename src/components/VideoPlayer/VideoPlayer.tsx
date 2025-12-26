@@ -1,10 +1,13 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Paper, Box, Typography, IconButton } from '@mui/material';
+import { Paper, Box, Typography, IconButton, Button, Alert, Tooltip } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
+import VolumeUpIcon from '@mui/icons-material/VolumeUp';
+import UndoIcon from '@mui/icons-material/Undo';
+import LinkIcon from '@mui/icons-material/Link';
 import BufferOverlay from './BufferOverlay';
 import SubtitleControls from './SubtitleControls';
 import type { FileData } from '../../services/apiClient';
-import { getStreamUrl, onVideoPlay, onVideoPause } from '../../services/apiClient';
+import { getStreamUrl, getTranscodedStreamUrl, onVideoPlay, onVideoPause } from '../../services/apiClient';
 
 interface Subtitle {
   label: string;
@@ -19,6 +22,7 @@ interface VideoPlayerProps {
   infoHash?: string;
   fileIndex?: number;
   files?: FileData[];
+  magnetURI?: string;
 }
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -28,11 +32,49 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   infoHash,
   fileIndex,
   files = [],
+  magnetURI,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [subtitles, setSubtitles] = useState<Subtitle[]>([]);
   const [isBuffering, setIsBuffering] = useState(false);
   const [bufferPercent, setBufferPercent] = useState(0);
+  const [isTranscoded, setIsTranscoded] = useState(false);
+  const [effectiveSrc, setEffectiveSrc] = useState(src);
+
+  // Reset state when src changes
+  useEffect(() => {
+    setIsTranscoded(false);
+    setEffectiveSrc(src);
+  }, [src]);
+
+  // Handle Fix Audio button click
+  const handleFixAudio = () => {
+    if (!infoHash || typeof fileIndex !== 'number') return;
+
+    const transcodedUrl = getTranscodedStreamUrl(infoHash, fileIndex);
+    setIsTranscoded(true);
+    setEffectiveSrc(transcodedUrl);
+
+    // Reset video to play from start with new source
+    const video = videoRef.current;
+    if (video) {
+      video.load();
+      video.play().catch(() => { });
+    }
+  };
+
+  // Handle Use Original button click (undo audio fix)
+  const handleUseOriginal = () => {
+    setIsTranscoded(false);
+    setEffectiveSrc(src);
+
+    // Reset video to play from start with original source
+    const video = videoRef.current;
+    if (video) {
+      video.load();
+      video.play().catch(() => { });
+    }
+  };
 
   // Filter available subtitle files from torrent
   const availableSubtitles = files.filter(
@@ -52,13 +94,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     try {
       // Construct URL to fetch subtitle file from backend
       const subtitleUrl = getStreamUrl(infoHash || '', file.index);
-      
+
       // Fetch the subtitle file
       const response = await fetch(subtitleUrl);
       if (!response.ok) throw new Error('Failed to fetch subtitle');
-      
+
       const text = await response.text();
-      
+
       // Convert SRT to VTT if needed
       let vttContent = text;
       if (file.name.endsWith('.srt')) {
@@ -141,7 +183,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
       const duration = video.duration;
       let totalBuffered = 0;
-      
+
       for (let i = 0; i < video.buffered.length; i++) {
         const end = video.buffered.end(i);
         totalBuffered = Math.max(totalBuffered, (end / duration) * 100);
@@ -156,7 +198,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         clearTimeout(hideTimeout);
         hideTimeout = null;
       }
-      
+
       // Pause video if it's playing
       if (!video.paused) {
         wasPlayingBeforeBuffering = true;
@@ -164,7 +206,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       } else {
         wasPlayingBeforeBuffering = false;
       }
-      
+
       setIsBuffering(true);
       lastShownAt = Date.now();
     };
@@ -175,11 +217,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         clearTimeout(showTimeout);
         showTimeout = null;
       }
-      
+
       // Ensure minimum show time
       const timeSinceShown = Date.now() - lastShownAt;
       const remainingTime = Math.max(0, MIN_SHOW_TIME - timeSinceShown);
-      
+
       if (remainingTime > 0) {
         // Wait for minimum show time to complete
         hideTimeout = window.setTimeout(() => {
@@ -207,16 +249,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
     const scheduleShowBuffering = () => {
       isWaiting = true;
-      
+
       // Clear any pending hide
       if (hideTimeout) {
         clearTimeout(hideTimeout);
         hideTimeout = null;
       }
-      
+
       // Don't schedule if already showing or already scheduled
       if (showTimeout) return;
-      
+
       showTimeout = window.setTimeout(() => {
         if (isWaiting) {
           showBuffering();
@@ -227,16 +269,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
     const scheduleHideBuffering = () => {
       isWaiting = false;
-      
+
       // Clear any pending show
       if (showTimeout) {
         clearTimeout(showTimeout);
         showTimeout = null;
       }
-      
+
       // Don't schedule if already hidden or already scheduled
       if (hideTimeout) return;
-      
+
       hideTimeout = window.setTimeout(() => {
         if (!isWaiting) {
           hideBuffering();
@@ -317,9 +359,23 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             bgcolor: 'background.default',
           }}
         >
-          <Typography variant="h6" noWrap>
-            {title}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0, flex: 1 }}>
+            <Typography variant="h6" noWrap>
+              {title}
+            </Typography>
+            {magnetURI && (
+              <Tooltip title="Copy magnet link">
+                <IconButton
+                  size="small"
+                  onClick={() => {
+                    navigator.clipboard.writeText(magnetURI);
+                  }}
+                >
+                  <LinkIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+          </Box>
           {onClose && (
             <IconButton onClick={onClose} size="small">
               <CloseIcon />
@@ -332,7 +388,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         <BufferOverlay show={isBuffering} bufferPercent={bufferPercent} />
         <video
           ref={videoRef}
-          src={src}
+          src={effectiveSrc}
           controls
           autoPlay
           playsInline
@@ -374,6 +430,51 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           Your browser does not support the video tag.
         </video>
       </Box>
+
+      {/* Fix Audio Button and Info Message - ABOVE subtitles */}
+      {infoHash && typeof fileIndex === 'number' && (
+        <Box
+          sx={{
+            px: 2,
+            py: 1.5,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2,
+            flexWrap: 'wrap',
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+          }}
+        >
+          {!isTranscoded && (
+            <Tooltip title="Fixes audio but disables seeking">
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<VolumeUpIcon />}
+                onClick={handleFixAudio}
+              >
+                Fix Audio
+              </Button>
+            </Tooltip>
+          )}
+          {isTranscoded && (
+            <>
+              <Button
+                variant="outlined"
+                size="small"
+                color="secondary"
+                startIcon={<UndoIcon />}
+                onClick={handleUseOriginal}
+              >
+                Use Original
+              </Button>
+              <Alert severity="info" sx={{ flex: 1, py: 0 }}>
+                Audio fixed! Seeking disabled.
+              </Alert>
+            </>
+          )}
+        </Box>
+      )}
 
       <SubtitleControls
         subtitles={subtitles}

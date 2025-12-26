@@ -11,10 +11,13 @@ import {
     Chip,
     Typography,
     Box,
+    IconButton,
+    Tooltip,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
+import LinkIcon from '@mui/icons-material/Link';
 import CircularProgress from '@mui/material/CircularProgress';
 import type { SearchResult } from '@/services/searchClient';
 import { formatBytes } from '@/utils/formatUtils';
@@ -47,9 +50,9 @@ const SearchResults: React.FC<SearchResultsProps> = ({ results, onAdd, addingMag
                     <TableHead>
                         <TableRow>
                             {/* Mobile: Action first, Desktop: Action last */}
-                            <TableCell 
-                                align="center" 
-                                sx={{ 
+                            <TableCell
+                                align="center"
+                                sx={{
                                     display: { xs: 'table-cell', sm: 'none' },
                                     minWidth: { xs: 50, sm: 'auto' },
                                     width: { xs: 50, sm: 'auto' },
@@ -67,9 +70,9 @@ const SearchResults: React.FC<SearchResultsProps> = ({ results, onAdd, addingMag
                             <TableCell>Category</TableCell>
                             <TableCell>Source</TableCell>
                             {/* Desktop: Action at the end */}
-                            <TableCell 
-                                align="center" 
-                                sx={{ 
+                            <TableCell
+                                align="center"
+                                sx={{
                                     display: { xs: 'none', sm: 'table-cell' }
                                 }}
                             >
@@ -81,9 +84,9 @@ const SearchResults: React.FC<SearchResultsProps> = ({ results, onAdd, addingMag
                         {results.map((result, index) => (
                             <TableRow key={`${result.magnetURI}-${index}`} hover>
                                 {/* Mobile: Action button first (leftmost) - icon only */}
-                                <TableCell 
+                                <TableCell
                                     align="center"
-                                    sx={{ 
+                                    sx={{
                                         display: { xs: 'table-cell', sm: 'none' },
                                         padding: { xs: '8px', sm: '16px' }
                                     }}
@@ -107,92 +110,103 @@ const SearchResults: React.FC<SearchResultsProps> = ({ results, onAdd, addingMag
                                         )}
                                     </Button>
                                 </TableCell>
-                                
+
                                 {/* Name */}
                                 <TableCell>
-                                    <Typography 
-                                        variant="body2" 
-                                        noWrap 
-                                        title={result.name} 
-                                        sx={{ 
-                                            maxWidth: { xs: 150, sm: 400 }
-                                        }}
-                                    >
-                                        {result.name}
-                                    </Typography>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                        <Typography
+                                            variant="body2"
+                                            noWrap
+                                            title={result.name}
+                                            sx={{
+                                                maxWidth: { xs: 150, sm: 350 }
+                                            }}
+                                        >
+                                            {result.name}
+                                        </Typography>
+                                        <Tooltip title="Copy magnet link">
+                                            <IconButton
+                                                size="small"
+                                                onClick={() => navigator.clipboard.writeText(result.magnetURI)}
+                                                sx={{ p: 0.25 }}
+                                            >
+                                                <LinkIcon fontSize="small" sx={{ fontSize: 16 }} />
+                                            </IconButton>
+                                        </Tooltip>
+                                    </Box>
                                 </TableCell>
-                                
+
                                 <TableCell align="right">
                                     <Typography variant="body2" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                                         {formatBytes(result.size)}
                                     </Typography>
                                 </TableCell>
-                                
+
                                 <TableCell align="center">
                                     <Chip
                                         icon={<CloudUploadIcon />}
                                         label={result.seeders}
                                         size="small"
                                         color={result.seeders > 10 ? 'success' : result.seeders > 0 ? 'warning' : 'default'}
-                                        sx={{ 
+                                        sx={{
                                             fontSize: { xs: '0.7rem', sm: '0.75rem' },
                                             height: { xs: 20, sm: 24 }
                                         }}
                                     />
                                 </TableCell>
-                                
+
                                 <TableCell align="center">
                                     <Chip
                                         icon={<CloudDownloadIcon />}
                                         label={result.leechers}
                                         size="small"
                                         color="info"
-                                        sx={{ 
+                                        sx={{
                                             fontSize: { xs: '0.7rem', sm: '0.75rem' },
                                             height: { xs: 20, sm: 24 }
                                         }}
                                     />
                                 </TableCell>
-                                
+
                                 <TableCell align="right">
-                                    <Typography 
-                                        variant="caption" 
+                                    <Typography
+                                        variant="caption"
                                         color="text.secondary"
                                         sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
                                     >
                                         {formatDate(result.uploadDate)}
                                     </Typography>
                                 </TableCell>
-                                
+
                                 {/* Category and Source at right end (after Date) */}
                                 <TableCell>
-                                    <Chip 
-                                        label={result.category} 
+                                    <Chip
+                                        label={result.category}
                                         size="small"
-                                        sx={{ 
+                                        sx={{
                                             fontSize: { xs: '0.7rem', sm: '0.75rem' },
                                             height: { xs: 20, sm: 24 }
                                         }}
                                     />
                                 </TableCell>
-                                
+
                                 <TableCell>
-                                    <Chip 
-                                        label={result.source || 'Unknown'} 
-                                        size="small" 
+                                    <Chip
+                                        label={result.source || 'Unknown'}
+                                        size="small"
                                         color={result.source === 'YTS' ? 'primary' : 'default'}
                                         variant="outlined"
-                                        sx={{ 
+                                        sx={{
                                             fontSize: { xs: '0.7rem', sm: '0.75rem' },
                                             height: { xs: 20, sm: 24 }
                                         }}
                                     />
                                 </TableCell>
-                                
+
                                 {/* Desktop: Action button at the end */}
-                                <TableCell 
+                                <TableCell
                                     align="center"
-                                    sx={{ 
+                                    sx={{
                                         display: { xs: 'none', sm: 'table-cell' }
                                     }}
                                 >
