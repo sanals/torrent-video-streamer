@@ -40,19 +40,20 @@ async function fetchWithProxies(targetUrl: string): Promise<Response> {
     try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-        
+
         const directResponse = await fetch(targetUrl, {
             method: 'GET',
             mode: 'cors',
             signal: controller.signal,
         });
         clearTimeout(timeoutId);
-        
+
         if (directResponse.ok) {
             return directResponse;
         }
     } catch (directError) {
-        if (directError.name === 'AbortError') {
+        const err = directError as Error;
+        if (err.name === 'AbortError') {
             console.log('Direct fetch timed out, trying proxies...');
         } else {
             console.log('Direct fetch failed, trying proxies...');
@@ -65,7 +66,7 @@ async function fetchWithProxies(targetUrl: string): Promise<Response> {
             const proxyUrl = proxy + encodeURIComponent(targetUrl);
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout per proxy
-            
+
             const response = await fetch(proxyUrl, {
                 method: 'GET',
                 signal: controller.signal,
@@ -82,7 +83,8 @@ async function fetchWithProxies(targetUrl: string): Promise<Response> {
                 continue;
             }
         } catch (proxyError) {
-            if (proxyError.name === 'AbortError') {
+            const err = proxyError as Error;
+            if (err.name === 'AbortError') {
                 console.log(`Proxy ${proxy} timed out, trying next...`);
             } else {
                 console.log(`Proxy ${proxy} failed, trying next...`);
@@ -110,7 +112,7 @@ export async function searchTorrentsBrowser(
         });
 
         const targetUrl = `${YTS_API_BASE}/list_movies.json?${params}`;
-        
+
         // Try fetching with proxy fallbacks
         const response = await fetchWithProxies(targetUrl);
 
@@ -148,18 +150,18 @@ export async function searchTorrentsBrowser(
         movies.forEach((movie: any) => {
             if (movie.torrents && movie.torrents.length > 0) {
                 movie.torrents.forEach((torrent: any) => {
-                        results.push({
-                            name: `${movie.title} (${movie.year}) [${torrent.quality}]`,
-                            magnetURI: buildMagnetLink(torrent.hash, movie.title),
-                            size: torrent.size_bytes || 0,
-                            seeders: torrent.seeds || 0,
-                            leechers: torrent.peers || 0,
-                            category: 'Movies',
-                            uploadDate: movie.date_uploaded || new Date().toISOString(),
-                            quality: torrent.quality,
-                            rating: movie.rating,
-                            source: 'YTS',
-                        });
+                    results.push({
+                        name: `${movie.title} (${movie.year}) [${torrent.quality}]`,
+                        magnetURI: buildMagnetLink(torrent.hash, movie.title),
+                        size: torrent.size_bytes || 0,
+                        seeders: torrent.seeds || 0,
+                        leechers: torrent.peers || 0,
+                        category: 'Movies',
+                        uploadDate: movie.date_uploaded || new Date().toISOString(),
+                        quality: torrent.quality,
+                        rating: movie.rating,
+                        source: 'YTS',
+                    });
                 });
             }
         });

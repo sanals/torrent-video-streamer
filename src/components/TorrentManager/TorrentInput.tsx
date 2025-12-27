@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Box, TextField, Button, Paper, Typography, Tabs, Tab, Card, CardContent } from '@mui/material';
+import { Box, TextField, Button, Typography, Tabs, Tab, Card, CardContent } from '@mui/material';
+import type { Theme } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import LinkIcon from '@mui/icons-material/Link';
@@ -64,16 +65,16 @@ const TorrentInput: React.FC<TorrentInputProps> = ({ onAdd, isAdding }) => {
     };
 
     return (
-        <Card 
+        <Card
             elevation={2}
-            sx={{ 
+            sx={{
                 mb: 3,
                 overflow: 'visible'
             }}
         >
             <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-                <Tabs 
-                    value={tabValue} 
+                <Tabs
+                    value={tabValue}
                     onChange={handleTabChange}
                     variant="fullWidth"
                     sx={{
@@ -85,22 +86,22 @@ const TorrentInput: React.FC<TorrentInputProps> = ({ onAdd, isAdding }) => {
                         }
                     }}
                 >
-                    <Tab 
-                        icon={<LinkIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />} 
+                    <Tab
+                        icon={<LinkIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
                         iconPosition="start"
                         label="Magnet Link"
-                        sx={{ 
+                        sx={{
                             '&.MuiTab-root': {
                                 flexDirection: { xs: 'column', sm: 'row' },
                                 gap: { xs: 0.5, sm: 1 }
                             }
                         }}
                     />
-                    <Tab 
-                        icon={<UploadFileIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />} 
+                    <Tab
+                        icon={<UploadFileIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
                         iconPosition="start"
                         label="Upload File"
-                        sx={{ 
+                        sx={{
                             '&.MuiTab-root': {
                                 flexDirection: { xs: 'column', sm: 'row' },
                                 gap: { xs: 0.5, sm: 1 }
@@ -141,7 +142,7 @@ const TorrentInput: React.FC<TorrentInputProps> = ({ onAdd, isAdding }) => {
                                 fullWidth
                                 startIcon={selectedFile ? <CheckCircleIcon /> : <UploadFileIcon />}
                                 disabled={isAdding}
-                                sx={{ 
+                                sx={{
                                     py: 2,
                                     mb: selectedFile ? 2 : 0,
                                     textTransform: 'none',
@@ -161,7 +162,7 @@ const TorrentInput: React.FC<TorrentInputProps> = ({ onAdd, isAdding }) => {
                                         textAlign: 'left'
                                     }}
                                 >
-                                    {selectedFile 
+                                    {selectedFile
                                         ? `Selected: ${selectedFile.name}`
                                         : 'Choose .torrent File'}
                                 </Box>
@@ -175,8 +176,8 @@ const TorrentInput: React.FC<TorrentInputProps> = ({ onAdd, isAdding }) => {
                             </Button>
                             {selectedFile && (
                                 <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                                    <Typography 
-                                        variant="caption" 
+                                    <Typography
+                                        variant="caption"
                                         color="text.secondary"
                                         sx={{
                                             overflow: 'hidden',
@@ -205,10 +206,10 @@ const TorrentInput: React.FC<TorrentInputProps> = ({ onAdd, isAdding }) => {
                         </Box>
                     )}
 
-                    <Box sx={{ 
-                        display: 'flex', 
-                        justifyContent: { xs: 'stretch', sm: 'flex-end' }, 
-                        mt: 3 
+                    <Box sx={{
+                        display: 'flex',
+                        justifyContent: { xs: 'stretch', sm: 'flex-end' },
+                        mt: 3
                     }}>
                         <Button
                             type="submit"
@@ -217,16 +218,16 @@ const TorrentInput: React.FC<TorrentInputProps> = ({ onAdd, isAdding }) => {
                             disabled={isAdding || (!magnetURI.trim() && !selectedFile)}
                             size="large"
                             fullWidth
-                            sx={{ 
+                            sx={(theme: Theme) => ({
                                 textTransform: 'none',
                                 fontWeight: 600,
                                 py: 1.5,
-                                [theme => theme.breakpoints.up('sm')]: {
+                                [theme.breakpoints.up('sm')]: {
                                     width: 'auto',
                                     minWidth: 160,
                                     px: 4
                                 }
-                            }}
+                            })}
                         >
                             {isAdding ? 'Adding...' : 'Start Download'}
                         </Button>

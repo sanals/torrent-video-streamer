@@ -146,10 +146,11 @@ export function getStreamUrl(infoHash: string, fileIndex: number): string {
 }
 
 /**
- * Get transcoded stream URL (audio converted to AAC, no seeking)
+ * Get transcoded stream URL (audio converted to AAC, seeking via startTime)
+ * If duration is provided, backend uses smart byte-offset seeking.
  */
-export function getTranscodedStreamUrl(infoHash: string, fileIndex: number, audioTrackIndex: number = 0): string {
-    return `${API_BASE_URL.replace('/api', '')}/api/stream-transcoded/${infoHash}/${fileIndex}?audioTrack=${audioTrackIndex}`;
+export function getTranscodedStreamUrl(infoHash: string, fileIndex: number, audioTrackIndex: number = 0, startTime: number = 0, duration: number = 0): string {
+    return `${API_BASE_URL.replace('/api', '')}/api/stream-transcoded/${infoHash}/${fileIndex}?audioTrack=${audioTrackIndex}&startTime=${startTime}&duration=${duration}`;
 }
 
 export interface AudioTrack {
@@ -163,6 +164,7 @@ export interface AudioTrack {
 export interface StreamInfo {
     success: boolean;
     audioTracks: AudioTrack[];
+    duration?: number;
 }
 
 /**
@@ -215,3 +217,52 @@ export async function checkHealth(): Promise<boolean> {
         return false;
     }
 }
+
+// ============================================================================
+// MSE (Media Source Extensions) API Functions
+// ============================================================================
+
+export interface MSEManifest {
+    success: boolean;
+    duration: number;
+    segmentDuration: number;
+    mimeType: string;
+    videoWidth?: number;
+    videoHeight?: number;
+    audioChannels?: number;
+}
+
+/**
+ * Get MSE manifest for a video file
+ */
+export async function getMSEManifest(infoHash: string, fileIndex: number, audioTrack: number = 0): Promise<MSEManifest> {
+    const response = await fetch(
+        `${API_BASE_URL.replace('/api', '')}/api/stream-mse/${infoHash}/${fileIndex}/manifest?audioTrack=${audioTrack}`
+    );
+    if (!response.ok) {
+        throw new Error('Failed to fetch MSE manifest');
+    }
+    return response.json();
+}
+
+/**
+ * Get MSE init segment URL
+ */
+export function getMSEInitUrl(infoHash: string, fileIndex: number, audioTrack: number = 0): string {
+    return `${API_BASE_URL.replace('/api', '')}/api/stream-mse/${infoHash}/${fileIndex}/init?audioTrack=${audioTrack}`;
+}
+
+/**
+ * Get MSE media segment URL
+ */
+export function getMSESegmentUrl(infoHash: string, fileIndex: number, startTime: number, duration: number, audioTrack: number = 0): string {
+    return `${API_BASE_URL.replace('/api', '')}/api/stream-mse/${infoHash}/${fileIndex}/segment?t=${startTime}&dur=${duration}&audioTrack=${audioTrack}`;
+}
+
+/**
+ * Check if MSE is supported in the current browser
+ */
+export function isMSESupported(): boolean {
+    return 'MediaSource' in window && typeof MediaSource.isTypeSupported === 'function';
+}
+

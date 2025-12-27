@@ -1,13 +1,14 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { Paper, Box, Typography, IconButton, Button, Alert, Tooltip, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { Paper, Box, Typography, IconButton, Button, Tooltip, Select, MenuItem, FormControl, InputLabel, Alert } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import UndoIcon from '@mui/icons-material/Undo';
 import LinkIcon from '@mui/icons-material/Link';
 import BufferOverlay from './BufferOverlay';
 import SubtitleControls from './SubtitleControls';
-import type { FileData, AudioTrack } from '../../services/apiClient';
-import { getStreamUrl, getTranscodedStreamUrl, onVideoPlay, onVideoPause, getStreamInfo } from '../../services/apiClient';
+import type { FileData, AudioTrack, TorrentData } from '../../services/apiClient';
+import { getStreamUrl, onVideoPlay, onVideoPause, getStreamInfo, getTorrent, isMSESupported } from '../../services/apiClient';
+import { MSEPlayer } from '../../utils/MSEPlayer';
 
 interface Subtitle {
   label: string;
@@ -35,22 +36,59 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   magnetURI,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const msePlayerRef = useRef<MSEPlayer | null>(null);
   const [subtitles, setSubtitles] = useState<Subtitle[]>([]);
   const [isBuffering, setIsBuffering] = useState(false);
   const [bufferPercent, setBufferPercent] = useState(0);
   const [isTranscoded, setIsTranscoded] = useState(false);
+  const [isMSEMode, setIsMSEMode] = useState(false);
+  const [mseError, setMseError] = useState<string | null>(null);
   const [effectiveSrc, setEffectiveSrc] = useState(src);
   const [audioTracks, setAudioTracks] = useState<AudioTrack[]>([]);
   const [selectedAudioTrack, setSelectedAudioTrack] = useState<number>(0);
   const [loadingAudioTracks, setLoadingAudioTracks] = useState(false);
+  const [videoDuration, setVideoDuration] = useState(0);
+  const [torrentStats, setTorrentStats] = useState<TorrentData | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Detect fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+
+  // Cleanup MSE player
+  const cleanupMSE = useCallback(() => {
+    if (msePlayerRef.current) {
+      msePlayerRef.current.destroy();
+      msePlayerRef.current = null;
+    }
+    setIsMSEMode(false);
+    setMseError(null);
+  }, []);
 
   // Reset state when src changes
   useEffect(() => {
+    cleanupMSE();
     setIsTranscoded(false);
     setEffectiveSrc(src);
     setAudioTracks([]);
     setSelectedAudioTrack(0);
-  }, [src]);
+    setVideoDuration(0);
+    setTorrentStats(null);
+  }, [src, cleanupMSE]);
+
+
 
   // Fetch audio tracks info
   useEffect(() => {
@@ -59,6 +97,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       getStreamInfo(infoHash, fileIndex)
         .then(info => {
           setAudioTracks(info.audioTracks || []);
+          if (info.duration) setVideoDuration(info.duration);
         })
         .catch(err => {
           console.warn('Failed to fetch audio tracks:', err);
@@ -69,25 +108,68 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   }, [infoHash, fileIndex]);
 
-  // Handle Fix Audio button click
-  const handleFixAudio = () => {
-    if (!infoHash || typeof fileIndex !== 'number') return;
+  // Handle Fix Audio button click - uses MSE for seekable transcoded playback
+  const handleFixAudio = async () => {
+    if (!infoHash || typeof fileIndex !== 'number' || !videoRef.current) return;
 
-    // Pass the selected audio track index
-    const transcodedUrl = getTranscodedStreamUrl(infoHash, fileIndex, selectedAudioTrack);
+    // Check if MSE is supported
+    if (!isMSESupported()) {
+      setMseError('MediaSource Extensions not supported in this browser');
+      return;
+    }
+
+    // Clean up any existing MSE player
+    cleanupMSE();
+
     setIsTranscoded(true);
-    setEffectiveSrc(transcodedUrl);
+    setIsMSEMode(true);
+    setIsBuffering(true);
+    setMseError(null);
 
-    // Reset video to play from start with new source
-    const video = videoRef.current;
-    if (video) {
-      video.load();
-      video.play().catch(() => { });
+    try {
+      // Create MSE player
+      const player = new MSEPlayer({
+        videoElement: videoRef.current,
+        infoHash,
+        fileIndex,
+        audioTrack: selectedAudioTrack,
+        onError: (error) => {
+          console.error('MSE Player error:', error);
+          setMseError(error.message);
+          setIsBuffering(false);
+        },
+        onBuffering: (buffering) => {
+          setIsBuffering(buffering);
+        },
+        onReady: () => {
+          console.log('📺 MSE Player ready!');
+          setIsBuffering(false);
+          // Update duration from MSE player
+          const dur = player.getDuration();
+          if (dur > 0) {
+            setVideoDuration(dur);
+          }
+          // Start playback
+          videoRef.current?.play().catch(() => { });
+        },
+      });
+
+      msePlayerRef.current = player;
+
+      // Initialize the player
+      await player.initialize();
+
+    } catch (error) {
+      console.error('Failed to initialize MSE player:', error);
+      setMseError((error as Error).message);
+      setIsBuffering(false);
+      setIsMSEMode(false);
     }
   };
 
   // Handle Use Original button click (undo audio fix)
   const handleUseOriginal = () => {
+    cleanupMSE();
     setIsTranscoded(false);
     setEffectiveSrc(src);
 
@@ -98,6 +180,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       video.play().catch(() => { });
     }
   };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      cleanupMSE();
+    };
+  }, [cleanupMSE]);
 
   // Filter available subtitle files from torrent
   const availableSubtitles = files.filter(
@@ -196,7 +285,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     let hideTimeout: number | null = null;
     let lastShownAt: number = 0;
     let isWaiting = false;
-    let wasPlayingBeforeBuffering = false; // Track if video was playing before buffering
 
     const calculateBufferStatus = () => {
       if (!video || video.duration === 0 || isNaN(video.duration)) {
@@ -222,14 +310,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         hideTimeout = null;
       }
 
-      // Pause video if it's playing
-      if (!video.paused) {
-        wasPlayingBeforeBuffering = true;
-        video.pause();
-      } else {
-        wasPlayingBeforeBuffering = false;
-      }
-
+      // Just show the overlay - don't interfere with video playback
+      // The browser handles buffering natively
       setIsBuffering(true);
       lastShownAt = Date.now();
     };
@@ -250,23 +332,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         hideTimeout = window.setTimeout(() => {
           if (!isWaiting) {
             setIsBuffering(false);
-            // Resume video if it was playing before buffering
-            if (wasPlayingBeforeBuffering && video.paused) {
-              video.play().catch(err => {
-                console.warn('Failed to resume video after buffering:', err);
-              });
-            }
           }
           hideTimeout = null;
         }, remainingTime);
       } else {
         setIsBuffering(false);
-        // Resume video if it was playing before buffering
-        if (wasPlayingBeforeBuffering && video.paused) {
-          video.play().catch(err => {
-            console.warn('Failed to resume video after buffering:', err);
-          });
-        }
       }
     };
 
@@ -361,6 +431,29 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     };
   }, []);
 
+  // Poll for torrent stats continuously when playing
+  useEffect(() => {
+    let pollInterval: NodeJS.Timeout;
+
+    if (infoHash) {
+      const fetchStats = async () => {
+        try {
+          const stats = await getTorrent(infoHash);
+          setTorrentStats(stats);
+        } catch (err) {
+          // Silently fail - the endpoint may return 404 if torrent not found
+        }
+      };
+
+      fetchStats(); // Initial fetch
+      pollInterval = setInterval(fetchStats, 2000); // Poll every 2 seconds
+    }
+
+    return () => {
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [infoHash]);
+
   // Cleanup blob URLs on unmount
   useEffect(() => {
     return () => {
@@ -408,12 +501,20 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       )}
 
       <Box sx={{ position: 'relative', paddingTop: '56.25%', bgcolor: 'black' }}>
-        <BufferOverlay show={isBuffering} bufferPercent={bufferPercent} />
+        <BufferOverlay
+          show={isBuffering}
+          bufferPercent={bufferPercent}
+          downloadSpeed={torrentStats?.downloadSpeed}
+          progress={torrentStats?.progress ? torrentStats.progress * 100 : 0}
+          numPeers={torrentStats?.numPeers}
+          isDownloading={(torrentStats?.downloadSpeed ?? 0) > 0}
+          isFullscreen={isFullscreen}
+        />
         <video
           ref={videoRef}
-          src={effectiveSrc}
+          src={isMSEMode ? undefined : effectiveSrc}
           controls
-          autoPlay
+          autoPlay={!isMSEMode}
           playsInline
           webkit-playsinline="true"
           crossOrigin="anonymous"
@@ -428,6 +529,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             // Notify backend that video paused (pause download if enabled)
             if (infoHash) {
               onVideoPause(infoHash);
+            }
+          }}
+          onDurationChange={(e) => {
+            const dur = e.currentTarget.duration;
+            // If backend duration failed (0) but native player found a duration, use it!
+            if (videoDuration === 0 && dur && isFinite(dur)) {
+              setVideoDuration(dur);
             }
           }}
           style={{
@@ -488,7 +596,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 </FormControl>
               )}
 
-              <Tooltip title="Fixes audio but disables seeking">
+              <Tooltip title="Fix audio with full seeking support">
                 <Button
                   variant="outlined"
                   size="small"
@@ -502,6 +610,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           )}
           {isTranscoded && (
             <>
+              {mseError ? (
+                <Alert severity="error" sx={{ py: 0.5 }}>
+                  {mseError}
+                </Alert>
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  📺 MSE Mode: Seeking enabled via native controls
+                </Typography>
+              )}
+
               <Button
                 variant="outlined"
                 size="small"
@@ -511,9 +629,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               >
                 Use Original
               </Button>
-              <Alert severity="info" sx={{ flex: 1, py: 0 }}>
-                Audio fixed! Seeking disabled.
-              </Alert>
             </>
           )}
         </Box>
