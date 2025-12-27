@@ -31,7 +31,7 @@ const categories = [
     { value: 'ebook', label: 'eBooks' },
 ];
 
-type SearchSource = 'tpb' | 'yts' | 'td';
+type SearchSource = 'alternative' | 'tpb' | 'yts' | 'td';
 
 const TorrentSearch: React.FC<TorrentSearchProps> = ({ onAddTorrent }) => {
     const [query, setQuery] = useState('');
@@ -151,7 +151,19 @@ const TorrentSearch: React.FC<TorrentSearchProps> = ({ onAddTorrent }) => {
                                     </Box>
                                 </Tooltip>
                             </ToggleButton>
+                            <ToggleButton value="alternative">
+                                <Tooltip title="Jackett - 500+ indexers (Recommended)">
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                        Jackett
+                                    </Box>
+                                </Tooltip>
+                            </ToggleButton>
                         </ToggleButtonGroup>
+                        {searchSource === 'alternative' && (
+                            <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                                (Jackett - 500+ indexers including 1337x, TPB, EZTV, LimeTorrents)
+                            </Typography>
+                        )}
                         {searchSource === 'tpb' && (
                             <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
                                 (TPB - Movies, TV, Music, Games, Software)
@@ -202,10 +214,18 @@ const TorrentSearch: React.FC<TorrentSearchProps> = ({ onAddTorrent }) => {
                             <ToggleButton value="td" sx={{ flex: 1 }}>
                                 TD
                             </ToggleButton>
+                            <ToggleButton value="alternative" sx={{ flex: 1 }}>
+                                Jackett
+                            </ToggleButton>
                         </ToggleButtonGroup>
 
                         {/* Info at bottom */}
                         <Box sx={{ mt: 0.5 }}>
+                            {searchSource === 'alternative' && (
+                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                                    Jackett - 500+ indexers (Recommended)
+                                </Typography>
+                            )}
                             {searchSource === 'tpb' && (
                                 <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
                                     TPB - Movies, TV, Music, Games, Software
