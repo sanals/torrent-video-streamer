@@ -49,6 +49,23 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [loadingAudioTracks, setLoadingAudioTracks] = useState(false);
   const [videoDuration, setVideoDuration] = useState(0);
   const [torrentStats, setTorrentStats] = useState<TorrentData | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Detect fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
 
   // Cleanup MSE player
   const cleanupMSE = useCallback(() => {
@@ -268,7 +285,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     let hideTimeout: number | null = null;
     let lastShownAt: number = 0;
     let isWaiting = false;
-    let wasPlayingBeforeBuffering = false; // Track if video was playing before buffering
 
     const calculateBufferStatus = () => {
       if (!video || video.duration === 0 || isNaN(video.duration)) {
@@ -294,14 +310,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         hideTimeout = null;
       }
 
-      // Pause video if it's playing
-      if (!video.paused) {
-        wasPlayingBeforeBuffering = true;
-        video.pause();
-      } else {
-        wasPlayingBeforeBuffering = false;
-      }
-
+      // Just show the overlay - don't interfere with video playback
+      // The browser handles buffering natively
       setIsBuffering(true);
       lastShownAt = Date.now();
     };
@@ -322,23 +332,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         hideTimeout = window.setTimeout(() => {
           if (!isWaiting) {
             setIsBuffering(false);
-            // Resume video if it was playing before buffering
-            if (wasPlayingBeforeBuffering && video.paused) {
-              video.play().catch(err => {
-                console.warn('Failed to resume video after buffering:', err);
-              });
-            }
           }
           hideTimeout = null;
         }, remainingTime);
       } else {
         setIsBuffering(false);
-        // Resume video if it was playing before buffering
-        if (wasPlayingBeforeBuffering && video.paused) {
-          video.play().catch(err => {
-            console.warn('Failed to resume video after buffering:', err);
-          });
-        }
       }
     };
 
@@ -433,28 +431,28 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     };
   }, []);
 
-  // Poll for torrent stats when buffering
+  // Poll for torrent stats continuously when playing
   useEffect(() => {
     let pollInterval: NodeJS.Timeout;
 
-    if ((isBuffering || isTranscoded) && infoHash) {
+    if (infoHash) {
       const fetchStats = async () => {
         try {
           const stats = await getTorrent(infoHash);
           setTorrentStats(stats);
         } catch (err) {
-          console.warn('Failed to fetch torrent stats', err);
+          // Silently fail - the endpoint may return 404 if torrent not found
         }
       };
 
       fetchStats(); // Initial fetch
-      pollInterval = setInterval(fetchStats, 1000);
+      pollInterval = setInterval(fetchStats, 2000); // Poll every 2 seconds
     }
 
     return () => {
       if (pollInterval) clearInterval(pollInterval);
     };
-  }, [isBuffering, isTranscoded, infoHash]);
+  }, [infoHash]);
 
   // Cleanup blob URLs on unmount
   useEffect(() => {
@@ -509,6 +507,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           downloadSpeed={torrentStats?.downloadSpeed}
           progress={torrentStats?.progress ? torrentStats.progress * 100 : 0}
           numPeers={torrentStats?.numPeers}
+          isDownloading={(torrentStats?.downloadSpeed ?? 0) > 0}
+          isFullscreen={isFullscreen}
         />
         <video
           ref={videoRef}
