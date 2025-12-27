@@ -31,7 +31,7 @@ const categories = [
     { value: 'ebook', label: 'eBooks' },
 ];
 
-type SearchSource = 'yts' | '1337x' | 'alternative';
+type SearchSource = 'tpb' | 'yts' | 'td';
 
 const TorrentSearch: React.FC<TorrentSearchProps> = ({ onAddTorrent }) => {
     const [query, setQuery] = useState('');
@@ -40,7 +40,7 @@ const TorrentSearch: React.FC<TorrentSearchProps> = ({ onAddTorrent }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [hasSearched, setHasSearched] = useState(false);
-    const [searchSource, setSearchSource] = useState<SearchSource>('yts');
+    const [searchSource, setSearchSource] = useState<SearchSource>('tpb');
     const [addingMagnetURI, setAddingMagnetURI] = useState<string | null>(null);
 
     const handleSearch = async (e: React.FormEvent) => {
@@ -70,7 +70,7 @@ const TorrentSearch: React.FC<TorrentSearchProps> = ({ onAddTorrent }) => {
             }
         } catch (err) {
             let errorMessage = err instanceof Error ? err.message : 'Failed to search torrents';
-            
+
             // Provide helpful messages for common backend errors
             if (errorMessage.includes('ECONNRESET') || errorMessage.includes('Network connection failed')) {
                 errorMessage = 'Network connection failed. This is usually caused by firewall/antivirus blocking Node.js. Please check TROUBLESHOOTING.md for solutions, or try using a VPN.';
@@ -81,7 +81,7 @@ const TorrentSearch: React.FC<TorrentSearchProps> = ({ onAddTorrent }) => {
             } else if (errorMessage.includes('All API mirrors failed')) {
                 errorMessage = 'All search API endpoints are currently unavailable. This may be a temporary issue. Please try again later or manually add torrents using magnet links.';
             }
-            
+
             setError(errorMessage);
             setResults([]);
         } finally {
@@ -103,154 +103,134 @@ const TorrentSearch: React.FC<TorrentSearchProps> = ({ onAddTorrent }) => {
         <Box sx={{ mb: 4 }}>
             <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
                 {/* Source Selector */}
-                <Paper 
-                        elevation={1} 
-                        sx={{ 
-                            mb: 2, 
-                            p: { xs: 1.5, sm: 2 },
-                            bgcolor: 'background.paper',
-                            border: '1px solid',
-                            borderColor: 'divider'
+                <Paper
+                    elevation={1}
+                    sx={{
+                        mb: 2,
+                        p: { xs: 1.5, sm: 2 },
+                        bgcolor: 'background.paper',
+                        border: '1px solid',
+                        borderColor: 'divider'
+                    }}
+                >
+                    {/* Desktop: Horizontal layout */}
+                    <Box
+                        sx={{
+                            display: { xs: 'none', sm: 'flex' },
+                            alignItems: 'center',
+                            gap: 2
                         }}
                     >
-                        {/* Desktop: Horizontal layout */}
-                        <Box 
-                            sx={{ 
-                                display: { xs: 'none', sm: 'flex' }, 
-                                alignItems: 'center', 
-                                gap: 2 
+                        <Typography variant="body2" color="text.secondary" sx={{ minWidth: 'fit-content' }}>
+                            Source:
+                        </Typography>
+                        <ToggleButtonGroup
+                            value={searchSource}
+                            exclusive
+                            onChange={(_, newSource) => newSource && setSearchSource(newSource)}
+                            size="small"
+                        >
+                            <ToggleButton value="tpb">
+                                <Tooltip title="The Pirate Bay - All content types">
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                        TPB
+                                    </Box>
+                                </Tooltip>
+                            </ToggleButton>
+                            <ToggleButton value="yts">
+                                <Tooltip title="YTS - Movies only, small file sizes">
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                        YTS
+                                    </Box>
+                                </Tooltip>
+                            </ToggleButton>
+                            <ToggleButton value="td">
+                                <Tooltip title="TorrentDownloads - Reliable general content">
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                        TD
+                                    </Box>
+                                </Tooltip>
+                            </ToggleButton>
+                        </ToggleButtonGroup>
+                        {searchSource === 'tpb' && (
+                            <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                                (TPB - Movies, TV, Music, Games, Software)
+                            </Typography>
+                        )}
+                        {searchSource === 'yts' && (
+                            <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                                (YTS - Movies only, small sizes)
+                            </Typography>
+                        )}
+                        {searchSource === 'td' && (
+                            <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                                (TorrentDownloads - Movies, TV, Music, Games, Software)
+                            </Typography>
+                        )}
+                    </Box>
+
+                    {/* Mobile: Vertical layout */}
+                    <Box sx={{ display: { xs: 'flex', sm: 'none' }, flexDirection: 'column', gap: 1.5 }}>
+                        {/* Label at top */}
+                        <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ fontWeight: 600 }}
+                        >
+                            Source:
+                        </Typography>
+
+                        {/* Buttons in middle */}
+                        <ToggleButtonGroup
+                            value={searchSource}
+                            exclusive
+                            onChange={(_, newSource) => newSource && setSearchSource(newSource)}
+                            size="small"
+                            fullWidth
+                            sx={{
+                                '& .MuiToggleButtonGroup-grouped': {
+                                    flex: 1,
+                                }
                             }}
                         >
-                            <Typography variant="body2" color="text.secondary" sx={{ minWidth: 'fit-content' }}>
-                                Source:
-                            </Typography>
-                            <ToggleButtonGroup
-                                value={searchSource}
-                                exclusive
-                                onChange={(_, newSource) => newSource && setSearchSource(newSource)}
-                                size="small"
-                            >
-                                <ToggleButton value="yts">
-                                    <Tooltip title="YTS - Movies only, high quality">
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                            YTS
-                                        </Box>
-                                    </Tooltip>
-                                </ToggleButton>
-                                <ToggleButton value="1337x">
-                                    <Tooltip title="1337x - Movies, TV Shows, and more (may be blocked by Cloudflare)">
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                            1337x
-                                        </Box>
-                                    </Tooltip>
-                                </ToggleButton>
-                                <ToggleButton value="alternative">
-                                    <Tooltip title="Alternative - Tries multiple providers (RARBG, ThePirateBay, etc.) to avoid Cloudflare">
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                            Alternative
-                                        </Box>
-                                    </Tooltip>
-                                </ToggleButton>
-                            </ToggleButtonGroup>
-                            {searchSource === 'yts' && (
-                                <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                                    (Movies only)
+                            <ToggleButton value="tpb" sx={{ flex: 1 }}>
+                                TPB
+                            </ToggleButton>
+                            <ToggleButton value="yts" sx={{ flex: 1 }}>
+                                YTS
+                            </ToggleButton>
+                            <ToggleButton value="td" sx={{ flex: 1 }}>
+                                TD
+                            </ToggleButton>
+                        </ToggleButtonGroup>
+
+                        {/* Info at bottom */}
+                        <Box sx={{ mt: 0.5 }}>
+                            {searchSource === 'tpb' && (
+                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                                    TPB - Movies, TV, Music, Games, Software
                                 </Typography>
                             )}
-                            {searchSource === '1337x' && (
-                                <Box sx={{ ml: 1, display: 'flex', flexDirection: 'column' }}>
-                                    <Typography variant="caption" color="text.secondary">
-                                        (Movies, TV Shows, etc.)
-                                    </Typography>
-                                    <Typography variant="caption" color="warning.main" sx={{ fontSize: '0.7rem', mt: 0.5 }}>
-                                        Note: May be blocked by Cloudflare. Try "Alternative" if this fails.
-                                    </Typography>
-                                </Box>
+                            {searchSource === 'yts' && (
+                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                                    YTS - Movies only, small sizes
+                                </Typography>
                             )}
-                            {searchSource === 'alternative' && (
-                                <Box sx={{ ml: 1, display: 'flex', flexDirection: 'column' }}>
-                                    <Typography variant="caption" color="text.secondary">
-                                        (Tries RARBG, ThePirateBay, Torrent9, 1337x)
-                                    </Typography>
-                                    <Typography variant="caption" color="info.main" sx={{ fontSize: '0.7rem', mt: 0.5 }}>
-                                        Automatically tries multiple providers to avoid Cloudflare blocks
-                                    </Typography>
-                                </Box>
+                            {searchSource === 'td' && (
+                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                                    TD - Movies, TV, Music, Games, Software
+                                </Typography>
                             )}
                         </Box>
+                    </Box>
+                </Paper>
 
-                        {/* Mobile: Vertical layout */}
-                        <Box sx={{ display: { xs: 'flex', sm: 'none' }, flexDirection: 'column', gap: 1.5 }}>
-                            {/* Label at top */}
-                            <Typography 
-                                variant="body2" 
-                                color="text.secondary" 
-                                sx={{ fontWeight: 600 }}
-                            >
-                                Source:
-                            </Typography>
-                            
-                            {/* Buttons in middle */}
-                            <ToggleButtonGroup
-                                value={searchSource}
-                                exclusive
-                                onChange={(_, newSource) => newSource && setSearchSource(newSource)}
-                                size="small"
-                                fullWidth
-                                sx={{
-                                    '& .MuiToggleButtonGroup-grouped': {
-                                        flex: 1,
-                                    }
-                                }}
-                            >
-                                <ToggleButton value="yts" sx={{ flex: 1 }}>
-                                    YTS
-                                </ToggleButton>
-                                <ToggleButton value="1337x" sx={{ flex: 1 }}>
-                                    1337x
-                                </ToggleButton>
-                                <ToggleButton value="alternative" sx={{ flex: 1 }}>
-                                    Alternative
-                                </ToggleButton>
-                            </ToggleButtonGroup>
-                            
-                            {/* Info at bottom */}
-                            <Box sx={{ mt: 0.5 }}>
-                                {searchSource === 'yts' && (
-                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                                        Movies only
-                                    </Typography>
-                                )}
-                                {searchSource === '1337x' && (
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', display: 'block' }}>
-                                            Movies, TV Shows, etc.
-                                        </Typography>
-                                        <Typography variant="caption" color="warning.main" sx={{ fontSize: '0.7rem', mt: 0.5, display: 'block' }}>
-                                            ⚠️ May be blocked by Cloudflare. Try "Alternative" if this fails.
-                                        </Typography>
-                                    </Box>
-                                )}
-                                {searchSource === 'alternative' && (
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', display: 'block' }}>
-                                            Tries RARBG, ThePirateBay, Torrent9, 1337x
-                                        </Typography>
-                                        <Typography variant="caption" color="info.main" sx={{ fontSize: '0.7rem', mt: 0.5, display: 'block' }}>
-                                            ✅ Automatically tries multiple providers to avoid Cloudflare blocks
-                                        </Typography>
-                                    </Box>
-                                )}
-                            </Box>
-                        </Box>
-                    </Paper>
-
-                <Box 
-                    component="form" 
-                    onSubmit={handleSearch} 
-                    sx={{ 
-                        display: 'flex', 
-                        gap: { xs: 1, sm: 2 }, 
+                <Box
+                    component="form"
+                    onSubmit={handleSearch}
+                    sx={{
+                        display: 'flex',
+                        gap: { xs: 1, sm: 2 },
                         flexWrap: { xs: 'nowrap', sm: 'wrap' },
                         alignItems: { xs: 'stretch', sm: 'flex-start' }
                     }}
@@ -262,7 +242,7 @@ const TorrentSearch: React.FC<TorrentSearchProps> = ({ onAddTorrent }) => {
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         disabled={loading}
-                        sx={{ 
+                        sx={{
                             flex: 1,
                             minWidth: { xs: 0, sm: 300 },
                             '& .MuiOutlinedInput-root': {
@@ -276,7 +256,7 @@ const TorrentSearch: React.FC<TorrentSearchProps> = ({ onAddTorrent }) => {
                         value={category}
                         onChange={(e) => setCategory(e.target.value)}
                         disabled={loading}
-                        sx={{ 
+                        sx={{
                             minWidth: { xs: 120, sm: 150 },
                             display: { xs: 'none', sm: 'flex' }
                         }}
@@ -292,7 +272,7 @@ const TorrentSearch: React.FC<TorrentSearchProps> = ({ onAddTorrent }) => {
                         variant="contained"
                         startIcon={loading ? <CircularProgress size={20} /> : <SearchIcon />}
                         disabled={loading || !query.trim()}
-                        sx={{ 
+                        sx={{
                             px: { xs: 2, sm: 4 },
                             minWidth: { xs: 'auto', sm: 'auto' },
                             height: { xs: '56px', sm: '56.5px' }, // Match TextField height on desktop
@@ -306,8 +286,8 @@ const TorrentSearch: React.FC<TorrentSearchProps> = ({ onAddTorrent }) => {
             </Paper>
 
             {error && (
-                <Alert 
-                    severity={results.length === 0 ? 'warning' : 'error'} 
+                <Alert
+                    severity={results.length === 0 ? 'warning' : 'error'}
                     sx={{ mb: 2 }}
                 >
                     {error}
@@ -315,8 +295,8 @@ const TorrentSearch: React.FC<TorrentSearchProps> = ({ onAddTorrent }) => {
             )}
 
             {hasSearched && !loading && results.length > 0 && (
-                <SearchResults 
-                    results={results} 
+                <SearchResults
+                    results={results}
                     onAdd={handleAdd}
                     addingMagnetURI={addingMagnetURI}
                 />
