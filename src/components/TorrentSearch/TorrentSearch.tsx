@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     Box,
     TextField,
@@ -31,7 +31,7 @@ const categories = [
     { value: 'ebook', label: 'eBooks' },
 ];
 
-type SearchSource = 'alternative' | 'tpb' | 'yts' | 'td';
+type SearchSource = 'alternative' | 'tpb' | 'yts' | 'td' | 'jackettx';
 
 const TorrentSearch: React.FC<TorrentSearchProps> = ({ onAddTorrent }) => {
     const [query, setQuery] = useState('');
@@ -42,6 +42,46 @@ const TorrentSearch: React.FC<TorrentSearchProps> = ({ onAddTorrent }) => {
     const [hasSearched, setHasSearched] = useState(false);
     const [searchSource, setSearchSource] = useState<SearchSource>('tpb');
     const [addingMagnetURI, setAddingMagnetURI] = useState<string | null>(null);
+
+    // Secret mode state (10 clicks on "Source:" to unlock)
+    const [secretMode, setSecretMode] = useState<boolean>(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('tvs_secret_mode') === 'true';
+        }
+        return false;
+    });
+    const [sourceClickCount, setSourceClickCount] = useState(0);
+    const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Persist secret mode to localStorage
+    useEffect(() => {
+        localStorage.setItem('tvs_secret_mode', secretMode.toString());
+    }, [secretMode]);
+
+    // Handle clicks on "Source:" label for secret mode toggle
+    const handleSourceLabelClick = () => {
+        // Clear existing timeout
+        if (clickTimeoutRef.current) {
+            clearTimeout(clickTimeoutRef.current);
+        }
+
+        const newCount = sourceClickCount + 1;
+        setSourceClickCount(newCount);
+
+        if (newCount >= 10) {
+            setSecretMode(prev => !prev);
+            setSourceClickCount(0);
+            // If turning off secret mode and currently on jackettx, switch to tpb
+            if (secretMode && searchSource === 'jackettx') {
+                setSearchSource('tpb');
+            }
+        } else {
+            // Reset count after 2 seconds of inactivity
+            clickTimeoutRef.current = setTimeout(() => {
+                setSourceClickCount(0);
+            }, 2000);
+        }
+    };
 
     const handleSearch = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -121,7 +161,16 @@ const TorrentSearch: React.FC<TorrentSearchProps> = ({ onAddTorrent }) => {
                             gap: 2
                         }}
                     >
-                        <Typography variant="body2" color="text.secondary" sx={{ minWidth: 'fit-content' }}>
+                        <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{
+                                minWidth: 'fit-content',
+                                cursor: 'default',
+                                userSelect: 'none',
+                            }}
+                            onClick={handleSourceLabelClick}
+                        >
                             Source:
                         </Typography>
                         <ToggleButtonGroup
@@ -158,6 +207,15 @@ const TorrentSearch: React.FC<TorrentSearchProps> = ({ onAddTorrent }) => {
                                     </Box>
                                 </Tooltip>
                             </ToggleButton>
+                            {secretMode && (
+                                <ToggleButton value="jackettx">
+                                    <Tooltip title="Jackett Other - Other content only">
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                            OTHER
+                                        </Box>
+                                    </Tooltip>
+                                </ToggleButton>
+                            )}
                         </ToggleButtonGroup>
                         {searchSource === 'alternative' && (
                             <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
@@ -179,6 +237,11 @@ const TorrentSearch: React.FC<TorrentSearchProps> = ({ onAddTorrent }) => {
                                 (TorrentDownloads - Movies, TV, Music, Games, Software)
                             </Typography>
                         )}
+                        {searchSource === 'jackettx' && (
+                            <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                                (Jackett Other - Other content from enabled indexers)
+                            </Typography>
+                        )}
                     </Box>
 
                     {/* Mobile: Vertical layout */}
@@ -187,7 +250,12 @@ const TorrentSearch: React.FC<TorrentSearchProps> = ({ onAddTorrent }) => {
                         <Typography
                             variant="body2"
                             color="text.secondary"
-                            sx={{ fontWeight: 600 }}
+                            sx={{
+                                fontWeight: 600,
+                                cursor: 'default',
+                                userSelect: 'none',
+                            }}
+                            onClick={handleSourceLabelClick}
                         >
                             Source:
                         </Typography>
@@ -217,6 +285,11 @@ const TorrentSearch: React.FC<TorrentSearchProps> = ({ onAddTorrent }) => {
                             <ToggleButton value="alternative" sx={{ flex: 1 }}>
                                 Jackett
                             </ToggleButton>
+                            {secretMode && (
+                                <ToggleButton value="jackettx" sx={{ flex: 1 }}>
+                                    JACKETTX
+                                </ToggleButton>
+                            )}
                         </ToggleButtonGroup>
 
                         {/* Info at bottom */}
@@ -239,6 +312,11 @@ const TorrentSearch: React.FC<TorrentSearchProps> = ({ onAddTorrent }) => {
                             {searchSource === 'td' && (
                                 <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
                                     TD - Movies, TV, Music, Games, Software
+                                </Typography>
+                            )}
+                            {searchSource === 'jackettx' && (
+                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                                    Jackett Other - Other content
                                 </Typography>
                             )}
                         </Box>
